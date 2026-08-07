@@ -4,7 +4,20 @@ Centralized SRE runbook API for service alerts, operational metadata, remediatio
 
 ## Overview
 
-`sre-runbook-api` is a production-oriented backend service for centralizing operational knowledge used during incident response and on-call workflows. It is designed to provide a reliable, structured foundation for storing and retrieving runbooks, alert context, and remediation guidance.
+`sre-runbook-api` is a production-oriented backend service for centralizing operational knowledge used during incident response and on-call workflows. It provides a structured foundation for storing and retrieving runbooks, alert context, remediation guidance, and incident-related metadata.
+
+## API Overview
+
+The API is intended to expose a clear, stable interface for operational knowledge management. Core capabilities are expected to include retrieving runbooks, linking alerts to relevant remediation steps, and surfacing the context needed to support fast incident triage and resolution.
+
+## Key Domains / Models
+
+- Services.
+- Runbooks.
+- Alerts.
+- Incidents.
+- Remediation references.
+- Operational metadata.
 
 ## Features
 
@@ -25,6 +38,19 @@ The service is designed as a focused backend API with clear separation between o
 - Docker.
 - Alembic.
 - Redis, where needed for caching or operational support.
+
+## Local Development
+
+- Clone the repository.
+- Create and activate a Python virtual environment.
+- Install dependencies.
+- Configure environment variables.
+- Run database migrations.
+- Start the API locally.
+
+## Deployment Notes
+
+The project is intended to be deployed as a containerized backend service. Deployment should support environment-based configuration, database migrations, and a predictable release process suitable for production use.
 
 ## Roadmap
 

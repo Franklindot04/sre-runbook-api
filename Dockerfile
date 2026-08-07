@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
+COPY migrations ./migrations
 COPY src ./src
 
 RUN pip install --upgrade pip \
@@ -14,4 +15,4 @@ RUN pip install --upgrade pip \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "sre_runbook_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn sre_runbook_api.main:app --host 0.0.0.0 --port 8000"]

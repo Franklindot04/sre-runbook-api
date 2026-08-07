@@ -4,62 +4,183 @@ Centralized SRE runbook API for service alerts, operational metadata, remediatio
 
 ## Overview
 
-`sre-runbook-api` is a production-oriented backend service for centralizing operational knowledge used during incident response and on-call workflows. It provides a structured foundation for storing and retrieving runbooks, alert context, remediation guidance, and incident-related metadata.
+`sre-runbook-api` is a production-oriented backend service for centralizing operational knowledge used during incident response and on-call workflows.
 
-## API Overview
+The API provides a structured foundation for managing:
 
-The API is intended to expose a clear, stable interface for operational knowledge management. Core capabilities are expected to include retrieving runbooks, linking alerts to relevant remediation steps, and surfacing the context needed to support fast incident triage and resolution.
+- Production services.
+- Operational runbooks.
+- Monitoring alerts.
+- Incident context.
+- Severity and ownership metadata.
+- Database-backed remediation references.
 
-## Key Domains / Models
+## API Capabilities
 
-- Services.
-- Runbooks.
-- Alerts.
-- Incidents.
-- Remediation references.
-- Operational metadata.
+The API currently provides:
 
-## Features
+- Service creation and listing.
+- Runbook creation, listing, filtering, and retrieval.
+- Alert creation and service-based filtering.
+- Incident creation with optional alert association.
+- Incident filtering by service and status.
+- Liveness and readiness health checks.
+- OpenAPI documentation through FastAPI.
 
-- Centralized storage for service runbooks and incident response references.
-- Structured access to alert context and operational metadata.
-- API-first design for SRE and platform workflows.
-- Built to support production-style incident response processes.
+## Core Domains
+
+### Services
+
+Represents a production service and its operational ownership.
+
+### Runbooks
+
+Contains structured response procedures, remediation guidance, severity, and service association.
+
+### Alerts
+
+Stores alert fingerprints, monitoring sources, severity, descriptions, and associated services.
+
+### Incidents
+
+Captures active operational incidents, their alert context, severity, status, and affected service.
 
 ## Architecture
 
-The service is designed as a focused backend API with clear separation between operational data, incident context, and remediation references. The goal is to keep the domain model simple, maintainable, and easy to extend as the project grows.
+The project uses a layered backend structure:
 
-## Tech Stack
-
-- FastAPI.
-- Python.
-- PostgreSQL.
-- Docker.
-- Alembic.
-- Redis, where needed for caching or operational support.
+- FastAPI provides the HTTP API layer.
+- Pydantic provides request and response validation.
+- SQLAlchemy provides database access and domain models.
+- Alembic manages database schema migrations.
+- SQLite supports local development.
+- PostgreSQL is supported for production deployments.
+- Docker provides a reproducible runtime environment.
+- GitHub Actions validates tests and code quality.
 
 ## Local Development
 
-- Clone the repository.
-- Create and activate a Python virtual environment.
-- Install dependencies.
-- Configure environment variables.
-- Run database migrations.
-- Start the API locally.
+Create and activate a virtual environment:
 
-## Deployment Notes
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
-The project is intended to be deployed as a containerized backend service. Deployment should support environment-based configuration, database migrations, and a predictable release process suitable for production use.
+Install the project and development dependencies:
 
-## Roadmap
+```bash
+pip install -e ".[dev]"
+cp .env.example .env
+```
 
-- Define the core runbook and incident data models.
-- Build the initial API surface for reading and managing operational knowledge.
-- Add authentication and access control.
-- Introduce search, filtering, and metadata enrichment.
-- Extend the service with integrations and automation support.
+Create the local database schema:
 
-## Status
+```bash
+alembic upgrade head
+```
 
-Early development.
+Start the API:
+
+```bash
+uvicorn sre_runbook_api.main:app --reload
+```
+
+The API is available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Interactive API documentation is available at:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/health/live` | Liveness check |
+| GET | `/health/ready` | Readiness check |
+| POST | `/api/v1/services` | Create a service |
+| GET | `/api/v1/services` | List services |
+| POST | `/api/v1/runbooks` | Create a runbook |
+| GET | `/api/v1/runbooks` | List and filter runbooks |
+| GET | `/api/v1/runbooks/{runbook_id}` | Retrieve a runbook |
+| POST | `/api/v1/alerts` | Create an alert |
+| GET | `/api/v1/alerts` | List and filter alerts |
+| POST | `/api/v1/incidents` | Create an incident |
+| GET | `/api/v1/incidents` | List and filter incidents |
+
+## Testing and Quality
+
+Run the test suite:
+
+```bash
+pytest
+```
+
+Run static analysis:
+
+```bash
+ruff check .
+```
+
+Run both checks before committing:
+
+```bash
+pytest && ruff check .
+```
+
+## Database Migrations
+
+Create a new migration after changing models:
+
+```bash
+alembic revision --autogenerate -m "describe schema change"
+```
+
+Apply migrations:
+
+```bash
+alembic upgrade head
+```
+
+Check the current migration:
+
+```bash
+alembic current
+```
+
+## Docker
+
+Build the container:
+
+```bash
+docker build -t sre-runbook-api .
+```
+
+Run the API:
+
+```bash
+docker run --rm -p 8000:8000 sre-runbook-api
+```
+
+The container applies database migrations before starting the API server.
+
+## Deployment
+
+Production deployments should provide:
+
+- A PostgreSQL `DATABASE_URL`.
+- Environment-specific configuration.
+- Automated database migrations.
+- Containerized application execution.
+- CI validation before merging.
+- Secure handling of environment variables and credentials.
+
+## Project Status
+
+Early production-oriented MVP in active development.

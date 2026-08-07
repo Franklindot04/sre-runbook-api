@@ -12,3 +12,5 @@ htmlcov/
 .DS_Store
 dist/
 build/
+
+*.db

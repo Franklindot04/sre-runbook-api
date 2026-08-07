@@ -5,14 +5,12 @@ from fastapi import FastAPI
 from sre_runbook_api import models  # noqa: F401
 from sre_runbook_api.api.routes import router
 from sre_runbook_api.config import get_settings
-from sre_runbook_api.database import Base, engine
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=engine)
     yield
 
 

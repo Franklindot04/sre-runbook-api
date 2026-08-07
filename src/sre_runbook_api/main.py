@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from sre_runbook_api import models  # noqa: F401
+from sre_runbook_api.api.routes import router
 from sre_runbook_api.config import get_settings
+from sre_runbook_api.database import Base, engine
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -11,7 +23,10 @@ app = FastAPI(
         "API for centralized SRE runbooks, service alerts, "
         "operational metadata, remediation references, and incident context."
     ),
+    lifespan=lifespan,
 )
+
+app.include_router(router)
 
 
 @app.get("/health/live", tags=["health"])

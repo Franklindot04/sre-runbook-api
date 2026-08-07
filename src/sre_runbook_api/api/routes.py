@@ -3,8 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sre_runbook_api.database import get_db
-from sre_runbook_api.models import Runbook, Service
+from sre_runbook_api.models import Alert, Incident, Runbook, Service
 from sre_runbook_api.schemas import (
+    AlertCreate,
+    AlertRead,
+    IncidentCreate,
+    IncidentRead,
     RunbookCreate,
     RunbookRead,
     ServiceCreate,
@@ -112,3 +116,106 @@ def get_runbook(
         )
 
     return runbook
+
+
+@router.post(
+    "/alerts",
+    response_model=AlertRead,
+    status_code=status.HTTP_201_CREATED,
+    tags=["alerts"],
+)
+def create_alert(
+    payload: AlertCreate,
+    db: Session = Depends(get_db),
+) -> Alert:
+    service = db.get(Service, payload.service_id)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service not found.",
+        )
+
+    existing = db.scalar(
+        select(Alert).where(Alert.fingerprint == payload.fingerprint)
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An alert with this fingerprint already exists.",
+        )
+
+    alert = Alert(**payload.model_dump())
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+@router.get(
+    "/alerts",
+    response_model=list[AlertRead],
+    tags=["alerts"],
+)
+def list_alerts(
+    service_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[Alert]:
+    statement = select(Alert).order_by(Alert.created_at.desc())
+
+    if service_id is not None:
+        statement = statement.where(Alert.service_id == service_id)
+
+    return list(db.scalars(statement).all())
+
+
+@router.post(
+    "/incidents",
+    response_model=IncidentRead,
+    status_code=status.HTTP_201_CREATED,
+    tags=["incidents"],
+)
+def create_incident(
+    payload: IncidentCreate,
+    db: Session = Depends(get_db),
+) -> Incident:
+    service = db.get(Service, payload.service_id)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service not found.",
+        )
+
+    if payload.alert_id is not None:
+        alert = db.get(Alert, payload.alert_id)
+        if alert is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Alert not found.",
+            )
+
+    incident = Incident(**payload.model_dump())
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+@router.get(
+    "/incidents",
+    response_model=list[IncidentRead],
+    tags=["incidents"],
+)
+def list_incidents(
+    service_id: int | None = Query(default=None),
+    incident_status: str | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+) -> list[Incident]:
+    statement = select(Incident).order_by(Incident.started_at.desc())
+
+    if service_id is not None:
+        statement = statement.where(Incident.service_id == service_id)
+
+    if incident_status is not None:
+        statement = statement.where(Incident.status == incident_status)
+
+    return list(db.scalars(statement).all())

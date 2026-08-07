@@ -89,3 +89,47 @@ def test_runbook_requires_existing_service(client: TestClient) -> None:
     )
 
     assert response.status_code == 404
+
+def test_create_alert_and_incident(client: TestClient) -> None:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Checkout API",
+            "slug": "checkout-api",
+            "description": "Customer checkout service.",
+            "owner_team": "Commerce Platform",
+        },
+    )
+
+    service_id = service_response.json()["id"]
+
+    alert_response = client.post(
+        "/api/v1/alerts",
+        json={
+            "service_id": service_id,
+            "fingerprint": "checkout-latency-prod",
+            "name": "Checkout latency elevated",
+            "severity": "high",
+            "source": "prometheus",
+            "description": "Checkout latency exceeded the production threshold.",
+        },
+    )
+
+    assert alert_response.status_code == 201
+    alert_id = alert_response.json()["id"]
+
+    incident_response = client.post(
+        "/api/v1/incidents",
+        json={
+            "service_id": service_id,
+            "alert_id": alert_id,
+            "title": "Checkout latency incident",
+            "summary": "Customers are experiencing slow checkout requests.",
+            "severity": "high",
+        },
+    )
+
+    assert incident_response.status_code == 201
+    incident = incident_response.json()
+    assert incident["status"] == "open"
+    assert incident["alert_id"] == alert_id

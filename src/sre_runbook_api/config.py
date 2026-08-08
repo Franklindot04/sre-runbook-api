@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./sre_runbook.db"
     api_key: SecretStr = SecretStr(DEVELOPMENT_API_KEY)
     api_key_header: str = "X-API-Key"
+    jwt_secret_key: SecretStr = SecretStr(
+        "development-only-jwt-secret-change-me"
+    )
+    access_token_expire_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -49,6 +53,19 @@ class Settings(BaseSettings):
             if len(key) < 32:
                 raise ValueError(
                     "API_KEY must contain at least 32 characters outside development."
+                )
+
+            jwt_key = self.jwt_secret_key.get_secret_value()
+            if jwt_key == "development-only-jwt-secret-change-me":
+                raise ValueError(
+                    "JWT_SECRET_KEY must be explicitly configured "
+                    "outside development."
+                )
+
+            if len(jwt_key) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must contain at least 32 characters "
+                    "outside development."
                 )
 
         return self

@@ -335,3 +335,82 @@ def test_valid_api_key_emits_auth_success_log(
     assert records[0]["event"] == "auth_success"
     assert records[0]["reason"] == "valid_api_key"
     assert "development-only-change-me" not in caplog.text
+
+def test_register_user_does_not_expose_password_hash(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "alice@example.com",
+            "display_name": "Alice",
+            "password": "correct-horse-battery-staple",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["email"] == "alice@example.com"
+    assert body["display_name"] == "Alice"
+    assert body["is_active"] is True
+    assert "password_hash" not in body
+
+
+def test_register_user_normalizes_email_and_rejects_duplicates(
+    client: TestClient,
+) -> None:
+    payload = {
+        "email": " Alice@Example.com ",
+        "password": "correct-horse-battery-staple",
+    }
+
+    first_response = client.post("/api/v1/auth/register", json=payload)
+    duplicate_response = client.post("/api/v1/auth/register", json=payload)
+
+    assert first_response.status_code == 201
+    assert first_response.json()["email"] == "alice@example.com"
+    assert duplicate_response.status_code == 409
+
+
+def test_login_returns_bearer_token(client: TestClient) -> None:
+    registration = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "login@example.com",
+            "password": "correct-horse-battery-staple",
+        },
+    )
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "LOGIN@example.com",
+            "password": "correct-horse-battery-staple",
+        },
+    )
+
+    assert registration.status_code == 201
+    assert response.status_code == 200
+    assert response.json()["token_type"] == "bearer"
+    assert response.json()["access_token"]
+
+
+def test_login_rejects_invalid_credentials(client: TestClient) -> None:
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "invalid-login@example.com",
+            "password": "correct-horse-battery-staple",
+        },
+    )
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "invalid-login@example.com",
+            "password": "wrong-password",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password."

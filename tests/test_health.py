@@ -52,3 +52,31 @@ def test_invalid_correlation_id_is_replaced() -> None:
     assert response.status_code == 200
     assert returned_id != "not-a-valid-id"
     assert len(returned_id) == 36
+
+
+def test_http_errors_include_error_contract() -> None:
+    response = client.get("/does-not-exist")
+
+    body = response.json()
+
+    assert response.status_code == 404
+    assert body["detail"] == "Not Found"
+    assert body["error_code"] == "http_error"
+    assert body["correlation_id"] == response.headers["X-Correlation-ID"]
+
+
+def test_validation_errors_include_error_contract() -> None:
+    response = client.post(
+        "/api/v1/services",
+        json={"name": "Invalid"},
+        headers={
+            "X-API-Key": "development-only-change-me",
+            "X-Correlation-ID": "12345678-1234-4234-8234-123456789abc",
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 422
+    assert body["error_code"] == "validation_error"
+    assert body["correlation_id"] == "12345678-1234-4234-8234-123456789abc"

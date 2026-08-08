@@ -175,3 +175,65 @@ def test_collection_pagination_rejects_invalid_values(
 
     assert response.status_code == 422
     assert response.json()["error_code"] == "validation_error"
+
+
+def test_service_search_filter_composes_with_pagination(
+    client: TestClient,
+) -> None:
+    for name in ("Payments API", "Payments Worker", "Orders API"):
+        response = client.post(
+            "/api/v1/services",
+            json={
+                "name": name,
+                "slug": name.lower().replace(" ", "-"),
+                "description": "Test service.",
+                "owner_team": "Platform",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/api/v1/services?search=payments&limit=1&offset=1"
+    )
+
+    assert response.status_code == 200
+    assert [service["name"] for service in response.json()] == [
+        "Payments Worker"
+    ]
+
+
+def test_runbook_search_filters_title_and_slug(client: TestClient) -> None:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Search Service",
+            "slug": "search-service",
+            "description": "Test service.",
+            "owner_team": "Platform",
+        },
+    )
+    service_id = service_response.json()["id"]
+
+    for title, slug in (
+        ("Database Recovery", "database-recovery"),
+        ("Cache Recovery", "cache-recovery"),
+    ):
+        response = client.post(
+            "/api/v1/runbooks",
+            json={
+                "service_id": service_id,
+                "title": title,
+                "slug": slug,
+                "summary": "Recovery procedure.",
+                "severity": "high",
+                "content": "Follow the recovery procedure.",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get("/api/v1/runbooks?search=database")
+
+    assert response.status_code == 200
+    assert [runbook["slug"] for runbook in response.json()] == [
+        "database-recovery"
+    ]

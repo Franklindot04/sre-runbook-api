@@ -237,3 +237,27 @@ def test_runbook_search_filters_title_and_slug(client: TestClient) -> None:
     assert [runbook["slug"] for runbook in response.json()] == [
         "database-recovery"
     ]
+
+
+def test_service_list_returns_total_count_for_filtered_results(
+    client: TestClient,
+) -> None:
+    for name in ("Payments API", "Payments Worker", "Orders API"):
+        response = client.post(
+            "/api/v1/services",
+            json={
+                "name": name,
+                "slug": name.lower().replace(" ", "-"),
+                "description": "Test service.",
+                "owner_team": "Platform",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/api/v1/services?search=payments&limit=1&offset=1"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Total-Count"] == "2"
+    assert len(response.json()) == 1

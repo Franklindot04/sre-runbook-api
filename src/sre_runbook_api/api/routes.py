@@ -1,4 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +45,7 @@ def create_service(
             (Service.name == payload.name) | (Service.slug == payload.slug)
         )
     )
+
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -48,6 +56,7 @@ def create_service(
     db.add(service)
     db.commit()
     db.refresh(service)
+
     return service
 
 
@@ -57,11 +66,15 @@ def create_service(
     tags=["services"],
 )
 def list_services(
+    response: Response,
     search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Service]:
-    statement = select(Service).order_by(Service.name, Service.id)
+    statement = select(Service).order_by(
+        Service.name,
+        Service.id,
+    )
 
     if search:
         pattern = f"%{search.strip().lower()}%"
@@ -72,7 +85,16 @@ def list_services(
             )
         )
 
+    total = db.scalar(
+        select(func.count()).select_from(
+            statement.order_by(None).subquery()
+        )
+    ) or 0
+
+    response.headers["X-Total-Count"] = str(total)
+
     statement = statement.offset(pagination.offset).limit(pagination.limit)
+
     return list(db.scalars(statement).all())
 
 
@@ -87,6 +109,7 @@ def create_runbook(
     db: Session = Depends(get_db),
 ) -> Runbook:
     service = db.get(Service, payload.service_id)
+
     if service is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -97,6 +120,7 @@ def create_runbook(
     db.add(runbook)
     db.commit()
     db.refresh(runbook)
+
     return runbook
 
 
@@ -106,6 +130,7 @@ def create_runbook(
     tags=["runbooks"],
 )
 def list_runbooks(
+    response: Response,
     service_id: int | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
@@ -128,7 +153,16 @@ def list_runbooks(
             )
         )
 
+    total = db.scalar(
+        select(func.count()).select_from(
+            statement.order_by(None).subquery()
+        )
+    ) or 0
+
+    response.headers["X-Total-Count"] = str(total)
+
     statement = statement.offset(pagination.offset).limit(pagination.limit)
+
     return list(db.scalars(statement).all())
 
 
@@ -163,6 +197,7 @@ def create_alert(
     db: Session = Depends(get_db),
 ) -> Alert:
     service = db.get(Service, payload.service_id)
+
     if service is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -172,6 +207,7 @@ def create_alert(
     existing = db.scalar(
         select(Alert).where(Alert.fingerprint == payload.fingerprint)
     )
+
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -182,6 +218,7 @@ def create_alert(
     db.add(alert)
     db.commit()
     db.refresh(alert)
+
     return alert
 
 
@@ -191,6 +228,7 @@ def create_alert(
     tags=["alerts"],
 )
 def list_alerts(
+    response: Response,
     service_id: int | None = Query(default=None),
     severity: str | None = Query(default=None, max_length=20),
     pagination: Pagination = Depends(),
@@ -207,7 +245,16 @@ def list_alerts(
     if severity is not None:
         statement = statement.where(Alert.severity == severity)
 
+    total = db.scalar(
+        select(func.count()).select_from(
+            statement.order_by(None).subquery()
+        )
+    ) or 0
+
+    response.headers["X-Total-Count"] = str(total)
+
     statement = statement.offset(pagination.offset).limit(pagination.limit)
+
     return list(db.scalars(statement).all())
 
 
@@ -222,6 +269,7 @@ def create_incident(
     db: Session = Depends(get_db),
 ) -> Incident:
     service = db.get(Service, payload.service_id)
+
     if service is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -230,6 +278,7 @@ def create_incident(
 
     if payload.alert_id is not None:
         alert = db.get(Alert, payload.alert_id)
+
         if alert is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -240,6 +289,7 @@ def create_incident(
     db.add(incident)
     db.commit()
     db.refresh(incident)
+
     return incident
 
 
@@ -249,6 +299,7 @@ def create_incident(
     tags=["incidents"],
 )
 def list_incidents(
+    response: Response,
     service_id: int | None = Query(default=None),
     incident_status: str | None = Query(default=None, alias="status"),
     pagination: Pagination = Depends(),
@@ -265,5 +316,14 @@ def list_incidents(
     if incident_status is not None:
         statement = statement.where(Incident.status == incident_status)
 
+    total = db.scalar(
+        select(func.count()).select_from(
+            statement.order_by(None).subquery()
+        )
+    ) or 0
+
+    response.headers["X-Total-Count"] = str(total)
+
     statement = statement.offset(pagination.offset).limit(pagination.limit)
+
     return list(db.scalars(statement).all())

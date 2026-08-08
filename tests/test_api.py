@@ -10,7 +10,10 @@ def client():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
-    with TestClient(app) as test_client:
+    with TestClient(
+        app,
+        headers={"X-API-Key": "development-only-change-me"},
+    ) as test_client:
         yield test_client
 
     Base.metadata.drop_all(bind=engine)
@@ -133,3 +136,11 @@ def test_create_alert_and_incident(client: TestClient) -> None:
     incident = incident_response.json()
     assert incident["status"] == "open"
     assert incident["alert_id"] == alert_id
+
+
+def test_api_requires_authentication() -> None:
+    with TestClient(app) as unauthenticated_client:
+        response = unauthenticated_client.get("/api/v1/services")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"

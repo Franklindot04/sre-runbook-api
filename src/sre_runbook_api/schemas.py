@@ -18,6 +18,7 @@ class ServiceRead(ServiceCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    owner_id: int | None
     created_at: datetime
 
 

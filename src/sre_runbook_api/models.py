@@ -14,11 +14,19 @@ class Service(Base):
     slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text)
     owner_team: Mapped[str | None] = mapped_column(String(120))
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
     )
 
+    owner: Mapped["User | None"] = relationship(
+        back_populates="services",
+    )
     runbooks: Mapped[list["Runbook"]] = relationship(
         back_populates="service",
         cascade="all, delete-orphan",
@@ -130,4 +138,8 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+    services: Mapped[list[Service]] = relationship(
+        back_populates="owner",
     )

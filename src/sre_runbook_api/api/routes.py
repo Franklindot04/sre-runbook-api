@@ -10,7 +10,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from sre_runbook_api.api.pagination import Pagination
-from sre_runbook_api.auth import create_access_token, hash_password, verify_password
+from sre_runbook_api.auth import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 from sre_runbook_api.database import get_db
 from sre_runbook_api.models import Alert, Incident, Runbook, Service, User
 from sre_runbook_api.schemas import (
@@ -30,9 +35,34 @@ from sre_runbook_api.schemas import (
 from sre_runbook_api.security import require_api_key
 
 router = APIRouter(prefix="/api/v1")
+
 protected_router = APIRouter(
-    dependencies=[Depends(require_api_key)],
+    dependencies=[
+        Depends(require_api_key),
+        Depends(get_current_user),
+    ],
 )
+
+
+def get_owned_service(
+    service_id: int,
+    current_user: User,
+    db: Session,
+) -> Service:
+    service = db.scalar(
+        select(Service).where(
+            Service.id == service_id,
+            Service.owner_id == current_user.id,
+        )
+    )
+
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service not found.",
+        )
+
+    return service
 
 
 @protected_router.post(
@@ -44,6 +74,7 @@ protected_router = APIRouter(
 def create_service(
     payload: ServiceCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Service:
     existing = db.scalar(
         select(Service).where(
@@ -57,7 +88,10 @@ def create_service(
             detail="A service with this name or slug already exists.",
         )
 
-    service = Service(**payload.model_dump())
+    service = Service(
+        **payload.model_dump(),
+        owner_id=current_user.id,
+    )
     db.add(service)
     db.commit()
     db.refresh(service)
@@ -75,10 +109,12 @@ def list_services(
     search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[Service]:
-    statement = select(Service).order_by(
-        Service.name,
-        Service.id,
+    statement = (
+        select(Service)
+        .where(Service.owner_id == current_user.id)
+        .order_by(Service.name, Service.id)
     )
 
     if search:
@@ -112,14 +148,9 @@ def list_services(
 def create_runbook(
     payload: RunbookCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Runbook:
-    service = db.get(Service, payload.service_id)
-
-    if service is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service not found.",
-        )
+    get_owned_service(payload.service_id, current_user, db)
 
     runbook = Runbook(**payload.model_dump())
     db.add(runbook)
@@ -140,10 +171,13 @@ def list_runbooks(
     search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[Runbook]:
-    statement = select(Runbook).order_by(
-        Runbook.created_at.desc(),
-        Runbook.id.desc(),
+    statement = (
+        select(Runbook)
+        .join(Service, Runbook.service_id == Service.id)
+        .where(Service.owner_id == current_user.id)
+        .order_by(Runbook.created_at.desc(), Runbook.id.desc())
     )
 
     if service_id is not None:
@@ -179,8 +213,16 @@ def list_runbooks(
 def get_runbook(
     runbook_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Runbook:
-    runbook = db.get(Runbook, runbook_id)
+    runbook = db.scalar(
+        select(Runbook)
+        .join(Service, Runbook.service_id == Service.id)
+        .where(
+            Runbook.id == runbook_id,
+            Service.owner_id == current_user.id,
+        )
+    )
 
     if runbook is None:
         raise HTTPException(
@@ -200,14 +242,9 @@ def get_runbook(
 def create_alert(
     payload: AlertCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Alert:
-    service = db.get(Service, payload.service_id)
-
-    if service is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service not found.",
-        )
+    get_owned_service(payload.service_id, current_user, db)
 
     existing = db.scalar(
         select(Alert).where(Alert.fingerprint == payload.fingerprint)
@@ -238,10 +275,13 @@ def list_alerts(
     severity: str | None = Query(default=None, max_length=20),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[Alert]:
-    statement = select(Alert).order_by(
-        Alert.created_at.desc(),
-        Alert.id.desc(),
+    statement = (
+        select(Alert)
+        .join(Service, Alert.service_id == Service.id)
+        .where(Service.owner_id == current_user.id)
+        .order_by(Alert.created_at.desc(), Alert.id.desc())
     )
 
     if service_id is not None:
@@ -272,17 +312,20 @@ def list_alerts(
 def create_incident(
     payload: IncidentCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Incident:
-    service = db.get(Service, payload.service_id)
-
-    if service is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service not found.",
-        )
+    get_owned_service(payload.service_id, current_user, db)
 
     if payload.alert_id is not None:
-        alert = db.get(Alert, payload.alert_id)
+        alert = db.scalar(
+            select(Alert)
+            .join(Service, Alert.service_id == Service.id)
+            .where(
+                Alert.id == payload.alert_id,
+                Alert.service_id == payload.service_id,
+                Service.owner_id == current_user.id,
+            )
+        )
 
         if alert is None:
             raise HTTPException(
@@ -309,10 +352,13 @@ def list_incidents(
     incident_status: str | None = Query(default=None, alias="status"),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[Incident]:
-    statement = select(Incident).order_by(
-        Incident.started_at.desc(),
-        Incident.id.desc(),
+    statement = (
+        select(Incident)
+        .join(Service, Incident.service_id == Service.id)
+        .where(Service.owner_id == current_user.id)
+        .order_by(Incident.started_at.desc(), Incident.id.desc())
     )
 
     if service_id is not None:
@@ -332,6 +378,7 @@ def list_incidents(
     statement = statement.offset(pagination.offset).limit(pagination.limit)
 
     return list(db.scalars(statement).all())
+
 
 @router.post(
     "/auth/register",

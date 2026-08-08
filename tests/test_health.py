@@ -125,3 +125,25 @@ def test_readiness_returns_service_unavailable_when_database_is_down(
     assert body["detail"] == "Database unavailable"
     assert body["error_code"] == "http_error"
     assert body["correlation_id"] == response.headers["X-Correlation-ID"]
+
+
+def test_security_headers_are_added_to_success_response() -> None:
+    response = client.get("/health/live")
+
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'none'"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_security_headers_are_added_to_error_response() -> None:
+    response = client.get("/does-not-exist")
+
+    assert response.status_code == 404
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'none'"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"

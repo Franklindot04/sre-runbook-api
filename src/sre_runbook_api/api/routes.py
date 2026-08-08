@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from sre_runbook_api.api.pagination import Pagination
@@ -57,15 +57,21 @@ def create_service(
     tags=["services"],
 )
 def list_services(
+    search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Service]:
-    statement = (
-        select(Service)
-        .order_by(Service.name, Service.id)
-        .offset(pagination.offset)
-        .limit(pagination.limit)
-    )
+    statement = select(Service).order_by(Service.name, Service.id)
+
+    if search:
+        pattern = f"%{search.strip().lower()}%"
+        statement = statement.where(
+            or_(
+                func.lower(Service.name).like(pattern),
+                func.lower(Service.slug).like(pattern),
+            )
+        )
+
     statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())
 
@@ -101,6 +107,7 @@ def create_runbook(
 )
 def list_runbooks(
     service_id: int | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Runbook]:
@@ -111,6 +118,15 @@ def list_runbooks(
 
     if service_id is not None:
         statement = statement.where(Runbook.service_id == service_id)
+
+    if search:
+        pattern = f"%{search.strip().lower()}%"
+        statement = statement.where(
+            or_(
+                func.lower(Runbook.title).like(pattern),
+                func.lower(Runbook.slug).like(pattern),
+            )
+        )
 
     statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())
@@ -176,6 +192,7 @@ def create_alert(
 )
 def list_alerts(
     service_id: int | None = Query(default=None),
+    severity: str | None = Query(default=None, max_length=20),
     pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Alert]:
@@ -186,6 +203,9 @@ def list_alerts(
 
     if service_id is not None:
         statement = statement.where(Alert.service_id == service_id)
+
+    if severity is not None:
+        statement = statement.where(Alert.severity == severity)
 
     statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())

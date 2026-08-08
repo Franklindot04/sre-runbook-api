@@ -17,6 +17,7 @@ from sre_runbook_api.errors import (
 )
 from sre_runbook_api.logging_middleware import RequestLoggingMiddleware
 from sre_runbook_api.middleware import CorrelationIdMiddleware
+from sre_runbook_api.security_headers import SecurityHeadersMiddleware
 
 settings = get_settings()
 access_logger = logging.getLogger("sre_runbook_api.access")
@@ -40,6 +41,7 @@ app = FastAPI(
 
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_exception_handler(
     StarletteHTTPException,
     http_exception_handler,

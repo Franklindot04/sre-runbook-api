@@ -181,6 +181,118 @@ Production deployments should provide:
 - CI validation before merging.
 - Secure handling of environment variables and credentials.
 
-## Project Status
+## Project Roadmap
 
-Early production-oriented MVP in active development.
+This checklist tracks the implementation status of the project. Completed work is
+checked off, partially implemented work is marked as partial, and unfinished
+items are listed under **NEXT — ROADMAP**.
+
+### Completed
+
+- [x] API security configuration
+  - Protected operational endpoints require an API key.
+  - API keys are compared using `secrets.compare_digest()`.
+  - Missing and invalid API keys return `401 Unauthorized`.
+
+- [x] Service management
+  - Services can be created and listed.
+  - Service metadata includes ownership information.
+
+- [x] Runbook creation and retrieval
+  - Runbooks can be created and retrieved.
+  - Runbooks are associated with existing services.
+  - Runbooks support filtering by title and slug search fields.
+
+- [x] Alert management
+  - Alerts can be created and listed.
+  - Alerts support service-based filtering.
+  - Alerts contain fingerprints, monitoring sources, severity, and descriptions.
+
+- [x] Incident creation and filtering
+  - Incidents can be created with optional alert associations.
+  - Incidents support filtering by service and status.
+  - Incident severity and open status are represented in the API.
+
+- [x] Pagination utilities
+  - Collection endpoints support `limit` and `offset`.
+  - Invalid pagination values are rejected.
+  - Filtered collections expose `X-Total-Count`.
+
+- [x] Health endpoints
+  - Liveness and readiness endpoints are available.
+
+- [x] Database migrations
+  - Alembic is used to manage schema migrations.
+
+- [x] Automated quality checks
+  - The test suite runs through pytest.
+  - Ruff validates code quality.
+  - GitHub Actions runs CI checks for pull requests.
+
+- [x] Negative-path API tests — current scope
+  - Missing API keys.
+  - Invalid API keys.
+  - Invalid pagination values.
+  - Missing runbook services.
+  - Authentication audit-log safety.
+
+### Partially implemented
+
+- [ ] Structured application logging
+  - Authentication success and failure events are emitted as structured JSON.
+  - API keys and authorization credentials are not logged.
+  - **NEXT — ROADMAP:** extend structured logging consistently across request,
+    database, runbook, alert, and incident operations.
+
+- [ ] Request correlation IDs
+  - Authentication audit events include a `correlation_id` field.
+  - **NEXT — ROADMAP:** add middleware that creates or propagates a correlation
+    ID and makes it available throughout the request lifecycle.
+
+- [ ] Database test fixtures
+  - Tests currently reset the database schema between tests.
+  - **NEXT — ROADMAP:** improve fixture isolation and add PostgreSQL-backed
+    integration fixtures.
+
+- [ ] PostgreSQL integration configuration
+  - PostgreSQL is identified as the production database target.
+  - **NEXT — ROADMAP:** add verified PostgreSQL integration configuration and
+    automated integration coverage.
+
+- [ ] Branch protection and repository governance
+  - Feature branches, pull requests, and CI checks are in use.
+  - **NEXT — ROADMAP:** verify protected branches, required reviews, required
+    status checks, and merge policy in repository settings.
+
+### NEXT — ROADMAP
+
+- [ ] Authentication models.
+- [ ] Authentication endpoints.
+- [ ] Password hashing and token handling.
+- [ ] User/service ownership authorization.
+- [ ] Runbook update endpoint.
+- [ ] Runbook lifecycle status.
+- [ ] Alert deduplication improvements.
+- [ ] Incident status transitions.
+- [ ] Incident resolution endpoint.
+- [ ] Incident timeline events.
+- [ ] Remediation references.
+- [ ] Consistent API error responses.
+- [ ] Metrics endpoint.
+- [ ] Expanded readiness checks.
+- [ ] Container non-root hardening.
+- [ ] Docker health check.
+- [ ] Dependency and security scanning.
+- [ ] Release metadata and versioning.
+- [ ] Deployment documentation.
+- [ ] Final integration and release validation.
+
+## Current Status
+
+The project is an early production-oriented MVP with service, runbook, alert,
+and incident workflows; API-key protection; filtering and pagination; database
+migrations; health checks; automated tests; and CI validation.
+
+The next implementation focus is the authentication foundation: authentication
+models, password hashing, token handling, authentication endpoints, and
+ownership-based authorization.

@@ -80,3 +80,26 @@ def test_validation_errors_include_error_contract() -> None:
     assert response.status_code == 422
     assert body["error_code"] == "validation_error"
     assert body["correlation_id"] == "12345678-1234-4234-8234-123456789abc"
+
+
+def test_requests_emit_structured_access_logs(caplog) -> None:
+    import json
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="sre_runbook_api.access"):
+        response = client.get("/health/live")
+
+    records = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "sre_runbook_api.access"
+    ]
+
+    assert response.status_code == 200
+    assert len(records) == 1
+    assert records[0]["event"] == "request_completed"
+    assert records[0]["method"] == "GET"
+    assert records[0]["path"] == "/health/live"
+    assert records[0]["status_code"] == 200
+    assert records[0]["correlation_id"] == response.headers["X-Correlation-ID"]
+    assert isinstance(records[0]["duration_ms"], float | int)

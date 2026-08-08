@@ -36,3 +36,21 @@ def test_production_accepts_a_long_api_key() -> None:
     )
 
     assert settings.environment == "production"
+
+
+def test_log_level_defaults_to_info(monkeypatch) -> None:
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    settings = Settings()
+
+    assert settings.log_level == "INFO"
+
+
+def test_log_level_is_case_insensitive() -> None:
+    settings = Settings(log_level="debug")
+
+    assert settings.log_level == "DEBUG"
+
+
+def test_invalid_log_level_is_rejected() -> None:
+    with pytest.raises(ValueError, match="LOG_LEVEL"):
+        Settings(log_level="verbose")

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     debug: bool = False
+    log_level: str = "INFO"
     database_url: str = "sqlite:///./sre_runbook.db"
     api_key: SecretStr = SecretStr(DEVELOPMENT_API_KEY)
     api_key_header: str = "X-API-Key"
@@ -21,6 +22,17 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_logging_configuration(self) -> "Settings":
+        valid_levels = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}
+        self.log_level = self.log_level.upper()
+        if self.log_level not in valid_levels:
+            raise ValueError(
+                "LOG_LEVEL must be one of: "
+                + ", ".join(sorted(valid_levels))
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_security_configuration(self) -> "Settings":

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from sre_runbook_api import models  # noqa: F401
 from sre_runbook_api.api.routes import router
 from sre_runbook_api.config import get_settings
+from sre_runbook_api.middleware import CorrelationIdMiddleware
 
 settings = get_settings()
 
@@ -23,6 +24,8 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(router)
 

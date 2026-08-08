@@ -261,3 +261,77 @@ def test_service_list_returns_total_count_for_filtered_results(
     assert response.status_code == 200
     assert response.headers["X-Total-Count"] == "2"
     assert len(response.json()) == 1
+
+
+def test_invalid_api_key_emits_safe_auth_failure_log(
+    client: TestClient,
+    caplog,
+) -> None:
+    import json
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="sre_runbook_api.auth"):
+        response = client.get(
+            "/api/v1/services",
+            headers={"X-API-Key": "invalid-key"},
+        )
+
+    records = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "sre_runbook_api.auth"
+    ]
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid API key."
+    assert len(records) == 1
+    assert records[0]["event"] == "auth_failure"
+    assert records[0]["reason"] == "invalid_api_key"
+    assert records[0]["path"] == "/api/v1/services"
+    assert "invalid-key" not in caplog.text
+
+
+def test_missing_api_key_emits_safe_auth_failure_log(
+    caplog,
+) -> None:
+    import json
+    import logging
+
+    with TestClient(app) as unauthenticated_client:
+        with caplog.at_level(logging.INFO, logger="sre_runbook_api.auth"):
+            response = unauthenticated_client.get("/api/v1/services")
+
+    records = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "sre_runbook_api.auth"
+    ]
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+    assert len(records) == 1
+    assert records[0]["event"] == "auth_failure"
+    assert records[0]["reason"] == "missing_api_key"
+
+
+def test_valid_api_key_emits_auth_success_log(
+    client: TestClient,
+    caplog,
+) -> None:
+    import json
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="sre_runbook_api.auth"):
+        response = client.get("/api/v1/services")
+
+    records = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "sre_runbook_api.auth"
+    ]
+
+    assert response.status_code == 200
+    assert len(records) == 1
+    assert records[0]["event"] == "auth_success"
+    assert records[0]["reason"] == "valid_api_key"
+    assert "development-only-change-me" not in caplog.text

@@ -1,10 +1,16 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from sre_runbook_api import models  # noqa: F401
 from sre_runbook_api.api.routes import router
 from sre_runbook_api.config import get_settings
+from sre_runbook_api.errors import (
+    http_exception_handler,
+    validation_exception_handler,
+)
 from sre_runbook_api.middleware import CorrelationIdMiddleware
 
 settings = get_settings()
@@ -26,6 +32,14 @@ app = FastAPI(
 )
 
 app.add_middleware(CorrelationIdMiddleware)
+app.add_exception_handler(
+    StarletteHTTPException,
+    http_exception_handler,
+)
+app.add_exception_handler(
+    RequestValidationError,
+    validation_exception_handler,
+)
 
 app.include_router(router)
 

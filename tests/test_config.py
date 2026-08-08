@@ -33,6 +33,7 @@ def test_production_accepts_a_long_api_key() -> None:
     settings = Settings(
         environment="production",
         api_key=SecretStr("p" * 32),
+        jwt_secret_key=SecretStr("j" * 32),
     )
 
     assert settings.environment == "production"
@@ -54,3 +55,31 @@ def test_log_level_is_case_insensitive() -> None:
 def test_invalid_log_level_is_rejected() -> None:
     with pytest.raises(ValueError, match="LOG_LEVEL"):
         Settings(log_level="verbose")
+
+
+def test_production_rejects_development_jwt_secret(monkeypatch) -> None:
+    from pydantic import ValidationError
+
+    from sre_runbook_api.config import Settings
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "a" * 32)
+    monkeypatch.setenv(
+        "JWT_SECRET_KEY",
+        "development-only-jwt-secret-change-me",
+    )
+
+    with pytest.raises(ValidationError, match="JWT_SECRET_KEY"):
+        Settings()
+
+
+def test_production_accepts_explicit_jwt_secret(monkeypatch) -> None:
+    from sre_runbook_api.config import Settings
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "a" * 32)
+    monkeypatch.setenv("JWT_SECRET_KEY", "b" * 32)
+
+    settings = Settings()
+
+    assert settings.environment == "production"

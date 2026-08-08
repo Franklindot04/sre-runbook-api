@@ -10,27 +10,32 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from sre_runbook_api.api.pagination import Pagination
+from sre_runbook_api.auth import create_access_token, hash_password, verify_password
 from sre_runbook_api.database import get_db
-from sre_runbook_api.models import Alert, Incident, Runbook, Service
+from sre_runbook_api.models import Alert, Incident, Runbook, Service, User
 from sre_runbook_api.schemas import (
     AlertCreate,
     AlertRead,
     IncidentCreate,
     IncidentRead,
+    LoginRequest,
     RunbookCreate,
     RunbookRead,
     ServiceCreate,
     ServiceRead,
+    TokenRead,
+    UserRead,
+    UserRegister,
 )
 from sre_runbook_api.security import require_api_key
 
-router = APIRouter(
-    prefix="/api/v1",
+router = APIRouter(prefix="/api/v1")
+protected_router = APIRouter(
     dependencies=[Depends(require_api_key)],
 )
 
 
-@router.post(
+@protected_router.post(
     "/services",
     response_model=ServiceRead,
     status_code=status.HTTP_201_CREATED,
@@ -60,7 +65,7 @@ def create_service(
     return service
 
 
-@router.get(
+@protected_router.get(
     "/services",
     response_model=list[ServiceRead],
     tags=["services"],
@@ -98,7 +103,7 @@ def list_services(
     return list(db.scalars(statement).all())
 
 
-@router.post(
+@protected_router.post(
     "/runbooks",
     response_model=RunbookRead,
     status_code=status.HTTP_201_CREATED,
@@ -124,7 +129,7 @@ def create_runbook(
     return runbook
 
 
-@router.get(
+@protected_router.get(
     "/runbooks",
     response_model=list[RunbookRead],
     tags=["runbooks"],
@@ -166,7 +171,7 @@ def list_runbooks(
     return list(db.scalars(statement).all())
 
 
-@router.get(
+@protected_router.get(
     "/runbooks/{runbook_id}",
     response_model=RunbookRead,
     tags=["runbooks"],
@@ -186,7 +191,7 @@ def get_runbook(
     return runbook
 
 
-@router.post(
+@protected_router.post(
     "/alerts",
     response_model=AlertRead,
     status_code=status.HTTP_201_CREATED,
@@ -222,7 +227,7 @@ def create_alert(
     return alert
 
 
-@router.get(
+@protected_router.get(
     "/alerts",
     response_model=list[AlertRead],
     tags=["alerts"],
@@ -258,7 +263,7 @@ def list_alerts(
     return list(db.scalars(statement).all())
 
 
-@router.post(
+@protected_router.post(
     "/incidents",
     response_model=IncidentRead,
     status_code=status.HTTP_201_CREATED,
@@ -293,7 +298,7 @@ def create_incident(
     return incident
 
 
-@router.get(
+@protected_router.get(
     "/incidents",
     response_model=list[IncidentRead],
     tags=["incidents"],
@@ -327,3 +332,65 @@ def list_incidents(
     statement = statement.offset(pagination.offset).limit(pagination.limit)
 
     return list(db.scalars(statement).all())
+
+@router.post(
+    "/auth/register",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    tags=["authentication"],
+)
+def register_user(
+    payload: UserRegister,
+    db: Session = Depends(get_db),
+) -> User:
+    email = payload.email.strip().lower()
+
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with this email already exists.",
+        )
+
+    user = User(
+        email=email,
+        display_name=payload.display_name,
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+@router.post(
+    "/auth/login",
+    response_model=TokenRead,
+    tags=["authentication"],
+)
+def login_user(
+    payload: LoginRequest,
+    db: Session = Depends(get_db),
+) -> TokenRead:
+    email = payload.email.strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+
+    if (
+        user is None
+        or not user.is_active
+        or not verify_password(payload.password, user.password_hash)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user.last_login_at = func.now()
+    db.commit()
+
+    return TokenRead(access_token=create_access_token(str(user.id)))
+
+
+router.include_router(protected_router)

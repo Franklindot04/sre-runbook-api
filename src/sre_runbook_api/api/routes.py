@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sre_runbook_api.api.pagination import Pagination
 from sre_runbook_api.database import get_db
 from sre_runbook_api.models import Alert, Incident, Runbook, Service
 from sre_runbook_api.schemas import (
@@ -56,9 +57,17 @@ def create_service(
     tags=["services"],
 )
 def list_services(
+    pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Service]:
-    return list(db.scalars(select(Service).order_by(Service.name)).all())
+    statement = (
+        select(Service)
+        .order_by(Service.name, Service.id)
+        .offset(pagination.offset)
+        .limit(pagination.limit)
+    )
+    statement = statement.offset(pagination.offset).limit(pagination.limit)
+    return list(db.scalars(statement).all())
 
 
 @router.post(
@@ -92,13 +101,18 @@ def create_runbook(
 )
 def list_runbooks(
     service_id: int | None = Query(default=None),
+    pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Runbook]:
-    statement = select(Runbook).order_by(Runbook.created_at.desc())
+    statement = select(Runbook).order_by(
+        Runbook.created_at.desc(),
+        Runbook.id.desc(),
+    )
 
     if service_id is not None:
         statement = statement.where(Runbook.service_id == service_id)
 
+    statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())
 
 
@@ -162,13 +176,18 @@ def create_alert(
 )
 def list_alerts(
     service_id: int | None = Query(default=None),
+    pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Alert]:
-    statement = select(Alert).order_by(Alert.created_at.desc())
+    statement = select(Alert).order_by(
+        Alert.created_at.desc(),
+        Alert.id.desc(),
+    )
 
     if service_id is not None:
         statement = statement.where(Alert.service_id == service_id)
 
+    statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())
 
 
@@ -212,9 +231,13 @@ def create_incident(
 def list_incidents(
     service_id: int | None = Query(default=None),
     incident_status: str | None = Query(default=None, alias="status"),
+    pagination: Pagination = Depends(),
     db: Session = Depends(get_db),
 ) -> list[Incident]:
-    statement = select(Incident).order_by(Incident.started_at.desc())
+    statement = select(Incident).order_by(
+        Incident.started_at.desc(),
+        Incident.id.desc(),
+    )
 
     if service_id is not None:
         statement = statement.where(Incident.service_id == service_id)
@@ -222,4 +245,5 @@ def list_incidents(
     if incident_status is not None:
         statement = statement.where(Incident.status == incident_status)
 
+    statement = statement.offset(pagination.offset).limit(pagination.limit)
     return list(db.scalars(statement).all())

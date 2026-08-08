@@ -144,3 +144,34 @@ def test_api_requires_authentication() -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
+
+
+def test_service_list_supports_pagination(client: TestClient) -> None:
+    for name in ("Alpha API", "Bravo API", "Charlie API"):
+        response = client.post(
+            "/api/v1/services",
+            json={
+                "name": name,
+                "slug": name.lower().replace(" ", "-"),
+                "description": "Test service.",
+                "owner_team": "Platform",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get("/api/v1/services?limit=2&offset=1")
+
+    assert response.status_code == 200
+    assert [service["name"] for service in response.json()] == [
+        "Bravo API",
+        "Charlie API",
+    ]
+
+
+def test_collection_pagination_rejects_invalid_values(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/v1/services?limit=101")
+
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "validation_error"

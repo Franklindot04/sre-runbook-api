@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,6 +16,8 @@ from sre_runbook_api.logging_middleware import RequestLoggingMiddleware
 from sre_runbook_api.middleware import CorrelationIdMiddleware
 
 settings = get_settings()
+access_logger = logging.getLogger("sre_runbook_api.access")
+access_logger.setLevel(getattr(logging, settings.log_level))
 
 
 @asynccontextmanager

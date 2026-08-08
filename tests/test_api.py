@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from sre_runbook_api.database import Base, engine
+from sre_runbook_api.auth import create_access_token, hash_password
+from sre_runbook_api.database import Base, SessionLocal, engine
 from sre_runbook_api.main import app
+from sre_runbook_api.models import User
 
 
 @pytest.fixture
@@ -10,9 +12,24 @@ def client():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+    db = SessionLocal()
+    user = User(
+        email="fixture@example.com",
+        display_name="Fixture User",
+        password_hash=hash_password("fixture-password-123"),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    access_token = create_access_token(str(user.id))
+    db.close()
+
     with TestClient(
         app,
-        headers={"X-API-Key": "development-only-change-me"},
+        headers={
+            "X-API-Key": "development-only-change-me",
+            "Authorization": f"Bearer {access_token}",
+        },
     ) as test_client:
         yield test_client
 
@@ -414,3 +431,66 @@ def test_login_rejects_invalid_credentials(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password."
+
+
+def test_services_are_isolated_between_users(
+    client: TestClient,
+) -> None:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Owned Service",
+            "slug": "owned-service",
+            "description": "Owned by the fixture user.",
+            "owner_team": "Platform",
+        },
+    )
+
+    assert service_response.status_code == 201
+    service_id = service_response.json()["id"]
+
+    original_headers = dict(client.headers)
+
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "other-user@example.com",
+            "display_name": "Other User",
+            "password": "other-password-123",
+        },
+    )
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "other-user@example.com",
+            "password": "other-password-123",
+        },
+    )
+    assert login_response.status_code == 200
+
+    other_token = login_response.json()["access_token"]
+    client.headers.update(
+        {"Authorization": f"Bearer {other_token}"}
+    )
+
+    list_response = client.get("/api/v1/services")
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+    runbook_response = client.post(
+        "/api/v1/runbooks",
+        json={
+            "service_id": service_id,
+            "title": "Unauthorized Runbook",
+            "slug": "unauthorized-runbook",
+            "summary": "Should not be created.",
+            "severity": "medium",
+            "content": "Unauthorized content.",
+        },
+    )
+    assert runbook_response.status_code == 404
+
+    client.headers.clear()
+    client.headers.update(original_headers)

@@ -1,8 +1,11 @@
 from fastapi.testclient import TestClient
 
+from sre_runbook_api.auth import get_current_user
 from sre_runbook_api.main import app
+from sre_runbook_api.models import User
 
 client = TestClient(app)
+
 
 
 def test_liveness_endpoint() -> None:
@@ -66,14 +69,24 @@ def test_http_errors_include_error_contract() -> None:
 
 
 def test_validation_errors_include_error_contract() -> None:
-    response = client.post(
-        "/api/v1/services",
-        json={"name": "Invalid"},
-        headers={
-            "X-API-Key": "development-only-change-me",
-            "X-Correlation-ID": "12345678-1234-4234-8234-123456789abc",
-        },
+    test_user = User(
+        id=1,
+        email="validation-fixture@example.com",
+        password_hash="unused",
     )
+    app.dependency_overrides[get_current_user] = lambda: test_user
+
+    try:
+        response = client.post(
+            "/api/v1/services",
+            json={"name": "Invalid"},
+            headers={
+                "X-API-Key": "development-only-change-me",
+                "X-Correlation-ID": "12345678-1234-4234-8234-123456789abc",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
     body = response.json()
 

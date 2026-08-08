@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
     database_url: str = "sqlite:///./sre_runbook.db"
+    api_key: str = "development-only-change-me"
+    api_key_header: str = "X-API-Key"
 
     model_config = SettingsConfigDict(
         env_file=".env",

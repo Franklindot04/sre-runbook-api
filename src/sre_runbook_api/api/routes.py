@@ -14,8 +14,12 @@ from sre_runbook_api.schemas import (
     ServiceCreate,
     ServiceRead,
 )
+from sre_runbook_api.security import require_api_key
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter(
+    prefix="/api/v1",
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.post(

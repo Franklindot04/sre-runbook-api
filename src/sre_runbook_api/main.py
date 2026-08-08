@@ -11,6 +11,7 @@ from sre_runbook_api.errors import (
     http_exception_handler,
     validation_exception_handler,
 )
+from sre_runbook_api.logging_middleware import RequestLoggingMiddleware
 from sre_runbook_api.middleware import CorrelationIdMiddleware
 
 settings = get_settings()
@@ -32,6 +33,7 @@ app = FastAPI(
 )
 
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 app.add_exception_handler(
     StarletteHTTPException,
     http_exception_handler,

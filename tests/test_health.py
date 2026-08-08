@@ -103,3 +103,25 @@ def test_requests_emit_structured_access_logs(caplog) -> None:
     assert records[0]["status_code"] == 200
     assert records[0]["correlation_id"] == response.headers["X-Correlation-ID"]
     assert isinstance(records[0]["duration_ms"], float | int)
+
+
+def test_readiness_returns_service_unavailable_when_database_is_down(
+    monkeypatch,
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    from sre_runbook_api import main
+
+    def unavailable_connection():
+        raise OperationalError("SELECT 1", {}, RuntimeError("database down"))
+
+    monkeypatch.setattr(main.engine, "connect", unavailable_connection)
+
+    response = client.get("/health/ready")
+
+    body = response.json()
+
+    assert response.status_code == 503
+    assert body["detail"] == "Database unavailable"
+    assert body["error_code"] == "http_error"
+    assert body["correlation_id"] == response.headers["X-Correlation-ID"]

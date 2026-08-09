@@ -10,10 +10,10 @@ separate review, validation, and approval.
 
 ## Current State
 
-The planned implementation and review roadmap for `sre-runbook-api` is
-complete. The project-completion review is also complete, and the repository at
-`~/Desktop/sre-runbook-api` is in a stable state that can pause or continue
-through focused future work.
+The planned implementation and final repository-polish series for
+`sre-runbook-api` are complete. The project-completion review is current, and
+the repository at `~/Desktop/sre-runbook-api` is in a stable state that can
+pause or continue through focused future work.
 
 Current repository evidence shows a stable `main`, passing local validation,
 passing CI validation, PostgreSQL migration coverage in CI, and documentation
@@ -60,9 +60,10 @@ checks, PostgreSQL migration verification, and release-readiness guidance.
 The repository includes a project [README](README.md), [contribution
 guide](CONTRIBUTING.md), [deployment guide](docs/deployment-environment-guide.md),
 [release-readiness checklist](docs/release-readiness-checklist.md),
-[project-completion review](docs/project-completion-review.md), [Code of
-Conduct](CODE_OF_CONDUCT.md), [NOTICE](NOTICE), [migration notes](migrations/README),
-and [Apache License 2.0 license text](LICENSE).
+[project-completion review](docs/project-completion-review.md),
+[maintainer guide](MAINTAINERS.md), [Code of Conduct](CODE_OF_CONDUCT.md),
+[NOTICE](NOTICE), [migration notes](migrations/README), issue forms, a
+pull-request template, and [Apache License 2.0 license text](LICENSE).
 
 ## Current Maintenance Priorities
 
@@ -83,20 +84,15 @@ unfinished application features:
 - Keep `.env.example` aligned with the settings model without publishing real
   secrets.
 
-## Planned Repository Polish
+## Completed Repository Polish
 
-This roadmap belongs to a defined repository-polish series. Remaining
-repository-governance work is expected to stay high level and documentation
-focused:
+The final repository-polish series is complete. It refreshed the project
+identity and README, added a Code of Conduct, added a project NOTICE, reconciled
+the roadmap, added maintainer guidance, added GitHub collaboration templates,
+and completed this final consistency review.
 
-- Maintainer guidance that clarifies repository stewardship and review
-  expectations.
-- Collaboration templates that make issues and pull requests easier to scope,
-  validate, and review.
-- A final repository consistency and polish review.
-
-These are not application-feature stages and do not commit the project to new
-runtime behavior.
+These were documentation and governance changes. They did not introduce new
+runtime behavior or start another application-feature stage.
 
 ## Potential Future Directions
 
@@ -107,8 +103,8 @@ focused pull request.
 ### Repository governance
 
 Repository operators may consider branch protection, required status checks,
-repository rulesets, issue templates, pull-request templates, and clearer
-maintainer ownership if those controls fit the project workflow.
+repository rulesets, deletion protection, private vulnerability reporting, and
+collaborator-permission adjustments if those controls fit the project workflow.
 
 ### Release management
 

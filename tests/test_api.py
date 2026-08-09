@@ -6,6 +6,8 @@ from sre_runbook_api.database import Base, SessionLocal, engine
 from sre_runbook_api.main import app
 from sre_runbook_api.models import User
 
+API_KEY = "development-only-change-me"
+
 
 @pytest.fixture
 def client():
@@ -27,7 +29,7 @@ def client():
     with TestClient(
         app,
         headers={
-            "X-API-Key": "development-only-change-me",
+            "X-API-Key": API_KEY,
             "Authorization": f"Bearer {access_token}",
         },
     ) as test_client:
@@ -110,6 +112,7 @@ def test_runbook_requires_existing_service(client: TestClient) -> None:
 
     assert response.status_code == 404
 
+
 def test_create_alert_and_incident(client: TestClient) -> None:
     service_response = client.post(
         "/api/v1/services",
@@ -158,6 +161,34 @@ def test_create_alert_and_incident(client: TestClient) -> None:
 def test_api_requires_authentication() -> None:
     with TestClient(app) as unauthenticated_client:
         response = unauthenticated_client.get("/api/v1/services")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_protected_route_accepts_valid_api_key_and_bearer_token(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/v1/services")
+
+    assert response.status_code == 200
+
+
+def test_protected_route_rejects_missing_api_key(
+    client: TestClient,
+) -> None:
+    bearer_token = client.headers["authorization"]
+
+    with TestClient(app, headers={"Authorization": bearer_token}) as test_client:
+        response = test_client.get("/api/v1/services")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_protected_route_rejects_missing_bearer_token() -> None:
+    with TestClient(app, headers={"X-API-Key": API_KEY}) as test_client:
+        response = test_client.get("/api/v1/services")
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
@@ -351,7 +382,8 @@ def test_valid_api_key_emits_auth_success_log(
     assert len(records) == 1
     assert records[0]["event"] == "auth_success"
     assert records[0]["reason"] == "valid_api_key"
-    assert "development-only-change-me" not in caplog.text
+    assert API_KEY not in caplog.text
+
 
 def test_register_user_does_not_expose_password_hash(
     client: TestClient,
@@ -491,6 +523,68 @@ def test_services_are_isolated_between_users(
         },
     )
     assert runbook_response.status_code == 404
+
+    client.headers.clear()
+    client.headers.update(original_headers)
+
+
+def test_runbook_detail_is_hidden_from_other_users(
+    client: TestClient,
+) -> None:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Private Service",
+            "slug": "private-service",
+            "description": "Owned by the fixture user.",
+            "owner_team": "Platform",
+        },
+    )
+    assert service_response.status_code == 201
+
+    runbook_response = client.post(
+        "/api/v1/runbooks",
+        json={
+            "service_id": service_response.json()["id"],
+            "title": "Private Runbook",
+            "slug": "private-runbook",
+            "summary": "Only the owning user should retrieve this runbook.",
+            "severity": "medium",
+            "content": "These operational steps belong to the owning user only.",
+        },
+    )
+    assert runbook_response.status_code == 201
+    runbook_id = runbook_response.json()["id"]
+
+    original_headers = dict(client.headers)
+
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "runbook-outsider@example.com",
+            "display_name": "Runbook Outsider",
+            "password": "outsider-password-123",
+        },
+    )
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "runbook-outsider@example.com",
+            "password": "outsider-password-123",
+        },
+    )
+    assert login_response.status_code == 200
+
+    client.headers.update(
+        {"Authorization": f"Bearer {login_response.json()['access_token']}"}
+    )
+
+    response = client.get(f"/api/v1/runbooks/{runbook_id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Runbook not found."
 
     client.headers.clear()
     client.headers.update(original_headers)

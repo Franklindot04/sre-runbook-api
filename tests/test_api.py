@@ -12,6 +12,19 @@ from sre_runbook_api.models import User
 
 API_KEY = "development-only-change-me"
 ALGORITHM = "HS256"
+SENSITIVE_ERROR_FRAGMENTS = (
+    "Traceback",
+    "Exception",
+    "password_hash",
+    "api_key",
+    "bearer ",
+    "SELECT ",
+    "INSERT ",
+    ".py",
+    "/Users/",
+    "jwt_secret",
+    API_KEY,
+)
 
 
 @pytest.fixture
@@ -214,6 +227,42 @@ def _assert_safe_incident_rejection(
         assert value not in body_text
 
 
+def _assert_error_response_contract(
+    response,
+    *,
+    expected_status: int,
+    expected_error_code: str,
+    expected_detail: object | None = None,
+    expected_correlation_id: str | None = None,
+) -> dict[str, object]:
+    body = response.json()
+    body_text = response.text
+
+    assert response.status_code == expected_status
+    assert response.headers["Content-Type"].startswith("application/json")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'none'"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert body["error_code"] == expected_error_code
+
+    if expected_detail is not None:
+        assert body["detail"] == expected_detail
+
+    if expected_correlation_id is None:
+        assert body["correlation_id"] == response.headers["X-Correlation-ID"]
+        assert len(body["correlation_id"]) == 36
+    else:
+        assert body["correlation_id"] == expected_correlation_id
+        assert response.headers["X-Correlation-ID"] == expected_correlation_id
+
+    for fragment in SENSITIVE_ERROR_FRAGMENTS:
+        assert fragment not in body_text
+
+    return body
+
+
 def test_create_and_list_service(client: TestClient) -> None:
     response = client.post(
         "/api/v1/services",
@@ -274,6 +323,8 @@ def test_create_and_get_runbook(client: TestClient) -> None:
 
 
 def test_runbook_requires_existing_service(client: TestClient) -> None:
+    correlation_id = "12345678-1234-4234-8234-123456789abc"
+
     response = client.post(
         "/api/v1/runbooks",
         json={
@@ -284,9 +335,16 @@ def test_runbook_requires_existing_service(client: TestClient) -> None:
             "severity": "medium",
             "content": "This runbook should not be created.",
         },
+        headers={"X-Correlation-ID": correlation_id},
     )
 
-    assert response.status_code == 404
+    _assert_error_response_contract(
+        response,
+        expected_status=404,
+        expected_error_code="http_error",
+        expected_detail="Service not found.",
+        expected_correlation_id=correlation_id,
+    )
 
 
 def test_create_alert_and_incident(client: TestClient) -> None:
@@ -338,8 +396,12 @@ def test_api_requires_authentication() -> None:
     with TestClient(app) as unauthenticated_client:
         response = unauthenticated_client.get("/api/v1/services")
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Not authenticated"
+    _assert_error_response_contract(
+        response,
+        expected_status=401,
+        expected_error_code="http_error",
+        expected_detail="Not authenticated",
+    )
 
 
 def test_protected_route_accepts_valid_api_key_and_bearer_token(
@@ -354,12 +416,41 @@ def test_protected_route_rejects_missing_api_key(
     client: TestClient,
 ) -> None:
     bearer_token = client.headers["authorization"]
+    correlation_id = "12345678-1234-4234-8234-123456789abc"
 
-    with TestClient(app, headers={"Authorization": bearer_token}) as test_client:
+    with TestClient(
+        app,
+        headers={
+            "Authorization": bearer_token,
+            "X-Correlation-ID": correlation_id,
+        },
+    ) as test_client:
         response = test_client.get("/api/v1/services")
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Not authenticated"
+    _assert_error_response_contract(
+        response,
+        expected_status=401,
+        expected_error_code="http_error",
+        expected_detail="Not authenticated",
+        expected_correlation_id=correlation_id,
+    )
+
+
+def test_protected_route_rejects_invalid_api_key_with_error_contract(
+    client: TestClient,
+) -> None:
+    response = client.get(
+        "/api/v1/services",
+        headers={"X-API-Key": "invalid-contract-key"},
+    )
+
+    _assert_error_response_contract(
+        response,
+        expected_status=401,
+        expected_error_code="http_error",
+        expected_detail="Invalid API key.",
+    )
+    assert "invalid-contract-key" not in response.text
 
 
 def test_protected_route_rejects_missing_bearer_token() -> None:
@@ -529,8 +620,86 @@ def test_collection_pagination_rejects_invalid_values(
 ) -> None:
     response = client.get("/api/v1/services?limit=101")
 
-    assert response.status_code == 422
-    assert response.json()["error_code"] == "validation_error"
+    body = _assert_error_response_contract(
+        response,
+        expected_status=422,
+        expected_error_code="validation_error",
+    )
+    assert body["detail"][0]["loc"] == ["query", "limit"]
+
+
+def test_malformed_json_body_returns_validation_error_contract(
+    client: TestClient,
+) -> None:
+    correlation_id = "12345678-1234-4234-8234-123456789abc"
+
+    response = client.post(
+        "/api/v1/services",
+        content='{"name": "Broken Service",',
+        headers={
+            "Content-Type": "application/json",
+            "X-Correlation-ID": correlation_id,
+        },
+    )
+
+    body = _assert_error_response_contract(
+        response,
+        expected_status=422,
+        expected_error_code="validation_error",
+        expected_correlation_id=correlation_id,
+    )
+    assert body["detail"][0]["type"] == "json_invalid"
+
+
+def test_missing_required_field_returns_validation_error_contract(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/v1/services",
+        json={"name": "Missing Slug Service"},
+    )
+
+    body = _assert_error_response_contract(
+        response,
+        expected_status=422,
+        expected_error_code="validation_error",
+    )
+    assert body["detail"][0]["loc"] == ["body", "slug"]
+    assert body["detail"][0]["type"] == "missing"
+
+
+def test_invalid_field_value_returns_validation_error_contract(
+    client: TestClient,
+) -> None:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Validation Service",
+            "slug": "validation-service",
+            "description": "Used for validation contract coverage.",
+            "owner_team": "Platform",
+        },
+    )
+    assert service_response.status_code == 201
+
+    response = client.post(
+        "/api/v1/runbooks",
+        json={
+            "service_id": service_response.json()["id"],
+            "title": "Invalid Severity Runbook",
+            "slug": "invalid-severity-runbook",
+            "summary": "This payload should fail severity validation.",
+            "severity": "urgent",
+            "content": "This runbook body is long enough for validation.",
+        },
+    )
+
+    body = _assert_error_response_contract(
+        response,
+        expected_status=422,
+        expected_error_code="validation_error",
+    )
+    assert body["detail"][0]["loc"] == ["body", "severity"]
 
 
 def test_service_search_filter_composes_with_pagination(
@@ -726,7 +895,12 @@ def test_register_user_normalizes_email_and_rejects_duplicates(
 
     assert first_response.status_code == 201
     assert first_response.json()["email"] == "alice@example.com"
-    assert duplicate_response.status_code == 409
+    _assert_error_response_contract(
+        duplicate_response,
+        expected_status=409,
+        expected_error_code="http_error",
+        expected_detail="A user with this email already exists.",
+    )
 
 
 def test_login_returns_bearer_token(client: TestClient) -> None:
@@ -1147,8 +1321,14 @@ def test_runbook_detail_is_hidden_from_other_users(
 
     response = client.get(f"/api/v1/runbooks/{runbook_id}")
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Runbook not found."
+    _assert_error_response_contract(
+        response,
+        expected_status=404,
+        expected_error_code="http_error",
+        expected_detail="Runbook not found.",
+    )
+    assert "Private Runbook" not in response.text
+    assert "private-runbook" not in response.text
 
     client.headers.clear()
     client.headers.update(original_headers)

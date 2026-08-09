@@ -1,0 +1,121 @@
+name: Feature request
+description: Propose a focused improvement to the SRE Runbook API
+title: "[Enhancement]: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution, and keep requests within the repository scope. Submission does not create a delivery commitment.
+
+        Do not include credentials, personal information, or private infrastructure details.
+
+  - type: textarea
+    id: problem-or-operational-need
+    attributes:
+      label: Problem or operational need
+      description: Explain what problem exists and who or what is affected.
+      placeholder: What operational, reliability, security, maintainability, or usability problem should this address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-value
+    attributes:
+      label: Expected value
+      description: Describe the operational, reliability, security, maintainability, or usability value.
+      placeholder: What would improve if this were accepted and implemented?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-direction
+    attributes:
+      label: Proposed direction
+      description: Give a high-level solution direction rather than a complete implementation specification.
+      placeholder: Summarize the approach or behavior you think would help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives considered
+      description: Share other approaches considered, if any.
+
+  - type: textarea
+    id: scope-boundaries
+    attributes:
+      label: Scope boundaries
+      description: State what should be included and what should be excluded.
+      placeholder: Keep the proposed change focused and identify follow-up work separately.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: security-and-privacy-impact
+    attributes:
+      label: Security and privacy impact
+      options:
+        - No expected impact
+        - Impact requires review
+        - Unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database-or-migration-impact
+    attributes:
+      label: Database or migration impact
+      options:
+        - No expected impact
+        - Impact requires review
+        - Unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: compatibility-impact
+    attributes:
+      label: Compatibility impact
+      options:
+        - Backward compatible
+        - Potential compatibility impact
+        - Breaking change may be required
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation-approach
+    attributes:
+      label: Validation approach
+      description: Describe how the proposed result could be tested or verified.
+      placeholder: Mention relevant tests, migration checks, documentation checks, or manual verification.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other non-sensitive context that may help.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation checklist
+      options:
+        - label: I searched for similar requests.
+          required: true
+        - label: I described the problem and expected value.
+          required: true
+        - label: I kept the proposal focused.
+          required: true
+        - label: I considered security, migration, and compatibility impact.
+          required: true
+        - label: I removed sensitive information.
+          required: true
+        - label: I understand that acceptance and scheduling are not guaranteed.
+          required: true

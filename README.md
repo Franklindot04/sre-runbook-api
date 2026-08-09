@@ -148,6 +148,8 @@ security headers.
 
 For contribution, review, attribution, and pull-request expectations, see the
 [Contribution and Review Process](CONTRIBUTING.md).
+For closure status after the merged roadmap, see the
+[Project Completion Review](docs/project-completion-review.md).
 
 Run the test suite:
 

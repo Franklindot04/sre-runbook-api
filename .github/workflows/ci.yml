@@ -16,6 +16,25 @@ jobs:
   quality:
     name: Test and lint
     runs-on: ubuntu-latest
+    env:
+      CI_POSTGRES_USER: ci_sre_runbook
+      CI_POSTGRES_PASSWORD: ci_sre_runbook_password
+      CI_POSTGRES_DB: ci_sre_runbook
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ${{ env.CI_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.CI_POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ env.CI_POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_sre_runbook -d ci_sre_runbook"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out repository
@@ -29,6 +48,23 @@ jobs:
 
       - name: Install dependencies
         run: pip install -e ".[dev]"
+
+      - name: Verify PostgreSQL connectivity
+        env:
+          CI_POSTGRES_DATABASE_URL: postgresql+psycopg://${{ env.CI_POSTGRES_USER }}:${{ env.CI_POSTGRES_PASSWORD }}@localhost:5432/${{ env.CI_POSTGRES_DB }}
+        run: |
+          python - <<'PY'
+          import os
+
+          from sqlalchemy import create_engine, text
+
+          engine = create_engine(os.environ["CI_POSTGRES_DATABASE_URL"])
+          try:
+              with engine.connect() as connection:
+                  connection.execute(text("SELECT 1"))
+          finally:
+              engine.dispose()
+          PY
 
       - name: Run Ruff
         run: ruff check .

@@ -146,6 +146,9 @@ security headers.
 
 ## Testing and Quality
 
+For contribution, review, attribution, and pull-request expectations, see the
+[Contribution and Review Process](CONTRIBUTING.md).
+
 Run the test suite:
 
 ```bash

@@ -189,6 +189,7 @@ under review.
 - [Release Readiness Checklist](docs/release-readiness-checklist.md)
 - [Project Completion Review](docs/project-completion-review.md)
 - [Migration Notes](migrations/README)
+- [Project Notice](NOTICE)
 - [License](LICENSE)
 
 ## Repository Workflow

@@ -1,0 +1,38 @@
+SRE Runbook API
+
+Project notice
+
+Project leadership and contribution
+
+Franklin Ajero (@Franklindot04) is the Project Owner and Maintainer.
+Ellesmaris (@ellesmaris) is a Co-Author and Reviewer.
+
+Project development and maintenance are documented in the repository's commit
+and pull-request history.
+
+Licence
+
+This project is distributed under the terms of the Apache License 2.0. See
+LICENSE for the complete licence terms.
+
+Copyright and attribution
+
+Individual contributions remain attributable to their respective authors as
+recorded in the repository history. This notice does not assign ownership of all
+contributions to any one contributor.
+
+Third-party software
+
+This project depends on third-party open-source packages governed by their own
+licences and notices. Dependency licence terms remain with those packages and
+are not reproduced in this notice.
+
+Repository history
+
+Git commit and pull-request history provide the authoritative record of
+individual contribution and co-author attribution for this repository.
+
+Contact and governance
+
+For project usage, contribution, conduct, and licence information, see
+README.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and LICENSE.

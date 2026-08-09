@@ -218,6 +218,8 @@ Production deployments should provide:
 For repository-specific deployment configuration, migration ordering, startup,
 and verification guidance, see the
 [Deployment Environment Guide](docs/deployment-environment-guide.md).
+For the final gate before deploying or publishing a release, use the
+[Release Readiness Checklist](docs/release-readiness-checklist.md).
 
 ## Project Roadmap
 

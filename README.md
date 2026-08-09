@@ -215,6 +215,10 @@ Production deployments should provide:
 - CI validation before merging.
 - Secure handling of environment variables and credentials.
 
+For repository-specific deployment configuration, migration ordering, startup,
+and verification guidance, see the
+[Deployment Environment Guide](docs/deployment-environment-guide.md).
+
 ## Project Roadmap
 
 This checklist tracks the implementation status of the project. Completed work is

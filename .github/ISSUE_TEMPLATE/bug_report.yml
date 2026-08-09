@@ -1,0 +1,125 @@
+name: Bug report
+description: Report a reproducible problem in the SRE Runbook API
+title: "[Bug]: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for reproducible defects. Search existing issues before opening a new one.
+
+        Do not post credentials, secrets, private reports, personal data, or security exploit details publicly. Security-sensitive matters should be raised through an available private GitHub-supported or maintainer-approved channel.
+
+  - type: textarea
+    id: problem-summary
+    attributes:
+      label: Problem summary
+      description: Provide a concise description of the defect.
+      placeholder: Briefly describe the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: Describe what happens now.
+      placeholder: What did the API, command, validation check, or documentation do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Describe what should happen instead.
+      placeholder: What result did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reliable reproduction.
+      placeholder: |
+        1. Start from...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Share relevant, non-sensitive environment details.
+      placeholder: |
+        - Python version:
+        - Operating system:
+        - Database type:
+        - Installation method:
+        - Commit or version reference, when known:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error output
+      description: Include only relevant output after redacting sensitive details.
+      placeholder: Redact tokens, passwords, connection strings, personal data, internal hostnames, and private URLs.
+      render: shell
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: Choose the closest practical impact.
+      options:
+        - Blocks normal use
+        - Causes incorrect behavior
+        - Causes intermittent failure
+        - Documentation or usability issue
+        - Minor inconvenience
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression
+      description: Did this work previously?
+      options:
+        - "Yes"
+        - "No"
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other non-sensitive context that may help.
+
+  - type: textarea
+    id: validation-ideas
+    attributes:
+      label: Validation ideas
+      description: Describe how the fix could be verified, if you have suggestions.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation checklist
+      options:
+        - label: I searched for duplicate issues.
+          required: true
+        - label: I provided reproducible evidence where possible.
+          required: true
+        - label: I removed credentials and sensitive information.
+          required: true
+        - label: I understand that submission does not guarantee a delivery date.
+          required: true

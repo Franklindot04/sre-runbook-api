@@ -184,6 +184,7 @@ under review.
 ## Documentation
 
 - [Contribution and Review Process](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Deployment Environment Guide](docs/deployment-environment-guide.md)
 - [Release Readiness Checklist](docs/release-readiness-checklist.md)
 - [Project Completion Review](docs/project-completion-review.md)

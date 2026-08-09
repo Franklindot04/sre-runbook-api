@@ -1,12 +1,17 @@
+from datetime import UTC, datetime, timedelta
+
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 
 from sre_runbook_api.auth import create_access_token, hash_password
+from sre_runbook_api.config import get_settings
 from sre_runbook_api.database import Base, SessionLocal, engine
 from sre_runbook_api.main import app
 from sre_runbook_api.models import User
 
 API_KEY = "development-only-change-me"
+ALGORITHM = "HS256"
 
 
 @pytest.fixture
@@ -192,6 +197,138 @@ def test_protected_route_rejects_missing_bearer_token() -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
+
+
+@pytest.mark.parametrize(
+    ("access_token", "expected_detail"),
+    [
+        ("not-a-valid-token", "Invalid or expired access token."),
+        (
+            jwt.encode(
+                {
+                    "sub": "123",
+                    "exp": datetime.now(UTC) + timedelta(minutes=5),
+                },
+                "untrusted-test-secret-with-enough-length",
+                algorithm=ALGORITHM,
+            ),
+            "Invalid or expired access token.",
+        ),
+        (
+            jwt.encode(
+                {
+                    "sub": "123",
+                    "exp": datetime.now(UTC) - timedelta(minutes=1),
+                },
+                get_settings().jwt_secret_key.get_secret_value(),
+                algorithm=ALGORITHM,
+            ),
+            "Invalid or expired access token.",
+        ),
+        (
+            jwt.encode(
+                {
+                    "exp": datetime.now(UTC) + timedelta(minutes=5),
+                },
+                get_settings().jwt_secret_key.get_secret_value(),
+                algorithm=ALGORITHM,
+            ),
+            "Invalid access token.",
+        ),
+        (
+            create_access_token("not-an-integer"),
+            "Invalid access token.",
+        ),
+    ],
+)
+def test_protected_route_rejects_invalid_bearer_tokens_safely(
+    access_token: str,
+    expected_detail: str,
+) -> None:
+    with TestClient(
+        app,
+        headers={
+            "X-API-Key": API_KEY,
+            "Authorization": f"Bearer {access_token}",
+        },
+    ) as test_client:
+        response = test_client.get("/api/v1/services")
+
+    body = response.json()
+    body_text = response.text
+
+    assert response.status_code == 401
+    assert body["detail"] == expected_detail
+    assert body["error_code"] == "http_error"
+    assert access_token not in body_text
+    assert API_KEY not in body_text
+    assert "password_hash" not in body_text
+    assert "Traceback" not in body_text
+
+
+def test_protected_route_rejects_token_for_missing_user_safely() -> None:
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    access_token = create_access_token("999999")
+
+    try:
+        with TestClient(
+            app,
+            headers={
+                "X-API-Key": API_KEY,
+                "Authorization": f"Bearer {access_token}",
+            },
+        ) as test_client:
+            response = test_client.get("/api/v1/services")
+    finally:
+        Base.metadata.drop_all(bind=engine)
+
+    body_text = response.text
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+    assert access_token not in body_text
+    assert "999999" not in body_text
+    assert "password_hash" not in body_text
+
+
+def test_protected_route_rejects_token_for_inactive_user_safely() -> None:
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    inactive_user = User(
+        email="inactive@example.com",
+        display_name="Inactive User",
+        password_hash=hash_password("inactive-password-123"),
+        is_active=False,
+    )
+    db.add(inactive_user)
+    db.commit()
+    db.refresh(inactive_user)
+    access_token = create_access_token(str(inactive_user.id))
+    db.close()
+
+    try:
+        with TestClient(
+            app,
+            headers={
+                "X-API-Key": API_KEY,
+                "Authorization": f"Bearer {access_token}",
+            },
+        ) as test_client:
+            response = test_client.get("/api/v1/services")
+    finally:
+        Base.metadata.drop_all(bind=engine)
+
+    body_text = response.text
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+    assert access_token not in body_text
+    assert "inactive@example.com" not in body_text
+    assert "Inactive User" not in body_text
+    assert "password_hash" not in body_text
 
 
 def test_service_list_supports_pagination(client: TestClient) -> None:

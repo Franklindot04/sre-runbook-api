@@ -43,6 +43,131 @@ def client():
     Base.metadata.drop_all(bind=engine)
 
 
+def _register_and_login(
+    client: TestClient,
+    *,
+    email: str,
+) -> str:
+    password = "test-password-123"
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "display_name": "Collection Test User",
+            "password": password,
+        },
+    )
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+    assert login_response.status_code == 200
+
+    return login_response.json()["access_token"]
+
+
+def _create_owned_operational_set(
+    client: TestClient,
+    *,
+    prefix: str,
+    service_name: str,
+    service_slug: str,
+    runbook_title: str,
+    runbook_slug: str,
+    alert_severity: str,
+    incident_status: str = "open",
+) -> dict[str, dict[str, object]]:
+    service_response = client.post(
+        "/api/v1/services",
+        json={
+            "name": service_name,
+            "slug": service_slug,
+            "description": f"{prefix} collection isolation service.",
+            "owner_team": f"{prefix} Platform",
+        },
+    )
+    assert service_response.status_code == 201
+    service = service_response.json()
+
+    runbook_response = client.post(
+        "/api/v1/runbooks",
+        json={
+            "service_id": service["id"],
+            "title": runbook_title,
+            "slug": runbook_slug,
+            "summary": f"{prefix} runbook for collection isolation.",
+            "severity": "high",
+            "content": (
+                f"{prefix} operational procedure for ownership filtering "
+                "coverage."
+            ),
+        },
+    )
+    assert runbook_response.status_code == 201
+    runbook = runbook_response.json()
+
+    alert_response = client.post(
+        "/api/v1/alerts",
+        json={
+            "service_id": service["id"],
+            "fingerprint": f"{service_slug}-collection-alert",
+            "name": f"{prefix} Collection Alert",
+            "severity": alert_severity,
+            "source": "test-suite",
+            "description": f"{prefix} alert for collection filtering tests.",
+        },
+    )
+    assert alert_response.status_code == 201
+    alert = alert_response.json()
+
+    incident_response = client.post(
+        "/api/v1/incidents",
+        json={
+            "service_id": service["id"],
+            "alert_id": alert["id"],
+            "title": f"{prefix} Collection Incident",
+            "summary": f"{prefix} incident for collection filtering tests.",
+            "severity": "high",
+        },
+    )
+    assert incident_response.status_code == 201
+    incident = incident_response.json()
+    assert incident["status"] == incident_status
+
+    return {
+        "service": service,
+        "runbook": runbook,
+        "alert": alert,
+        "incident": incident,
+    }
+
+
+def _assert_collection_contains_only(
+    response,
+    *,
+    expected_id: int | None,
+    hidden_values: set[str],
+    total_count: str,
+) -> None:
+    assert response.status_code == 200
+    assert response.headers["X-Total-Count"] == total_count
+
+    items = response.json()
+    if expected_id is None:
+        assert items == []
+    else:
+        assert {item["id"] for item in items} == {expected_id}
+
+    body_text = response.text
+    for value in hidden_values:
+        assert value not in body_text
+
+
 def test_create_and_list_service(client: TestClient) -> None:
     response = client.post(
         "/api/v1/services",
@@ -663,6 +788,165 @@ def test_services_are_isolated_between_users(
 
     client.headers.clear()
     client.headers.update(original_headers)
+
+
+def test_collection_filters_hide_other_users_resources(
+    client: TestClient,
+) -> None:
+    first_user_resources = _create_owned_operational_set(
+        client,
+        prefix="First User",
+        service_name="First User Confidential API",
+        service_slug="first-user-confidential-api",
+        runbook_title="First User Confidential Runbook",
+        runbook_slug="first-user-confidential-runbook",
+        alert_severity="critical",
+    )
+
+    second_token = _register_and_login(
+        client,
+        email="collection-second-user@example.com",
+    )
+    client.headers.update({"Authorization": f"Bearer {second_token}"})
+
+    second_user_resources = _create_owned_operational_set(
+        client,
+        prefix="Second User",
+        service_name="Second User Visible API",
+        service_slug="second-user-visible-api",
+        runbook_title="Second User Visible Runbook",
+        runbook_slug="second-user-visible-runbook",
+        alert_severity="critical",
+    )
+
+    first_service = first_user_resources["service"]
+    first_runbook = first_user_resources["runbook"]
+    first_alert = first_user_resources["alert"]
+    first_incident = first_user_resources["incident"]
+    second_service = second_user_resources["service"]
+    second_runbook = second_user_resources["runbook"]
+    second_alert = second_user_resources["alert"]
+    second_incident = second_user_resources["incident"]
+
+    hidden_service_values = {
+        first_service["name"],
+        first_service["slug"],
+        first_service["description"],
+    }
+    hidden_runbook_values = {
+        first_runbook["title"],
+        first_runbook["slug"],
+        first_runbook["summary"],
+    }
+    hidden_alert_values = {
+        first_alert["name"],
+        first_alert["fingerprint"],
+        first_alert["description"],
+    }
+    hidden_incident_values = {
+        first_incident["title"],
+        first_incident["summary"],
+    }
+
+    _assert_collection_contains_only(
+        client.get("/api/v1/services"),
+        expected_id=second_service["id"],
+        hidden_values=hidden_service_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/services?search=first-user-confidential"),
+        expected_id=None,
+        hidden_values=hidden_service_values,
+        total_count="0",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/services?search=second-user-visible"),
+        expected_id=second_service["id"],
+        hidden_values=hidden_service_values,
+        total_count="1",
+    )
+
+    _assert_collection_contains_only(
+        client.get("/api/v1/runbooks"),
+        expected_id=second_runbook["id"],
+        hidden_values=hidden_runbook_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/runbooks?search=first-user-confidential"),
+        expected_id=None,
+        hidden_values=hidden_runbook_values,
+        total_count="0",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/runbooks?search=second-user-visible"),
+        expected_id=second_runbook["id"],
+        hidden_values=hidden_runbook_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/runbooks?service_id={first_service['id']}"),
+        expected_id=None,
+        hidden_values=hidden_runbook_values,
+        total_count="0",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/runbooks?service_id={second_service['id']}"),
+        expected_id=second_runbook["id"],
+        hidden_values=hidden_runbook_values,
+        total_count="1",
+    )
+
+    _assert_collection_contains_only(
+        client.get("/api/v1/alerts"),
+        expected_id=second_alert["id"],
+        hidden_values=hidden_alert_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/alerts?service_id={first_service['id']}"),
+        expected_id=None,
+        hidden_values=hidden_alert_values,
+        total_count="0",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/alerts?service_id={second_service['id']}"),
+        expected_id=second_alert["id"],
+        hidden_values=hidden_alert_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/alerts?severity=critical"),
+        expected_id=second_alert["id"],
+        hidden_values=hidden_alert_values,
+        total_count="1",
+    )
+
+    _assert_collection_contains_only(
+        client.get("/api/v1/incidents"),
+        expected_id=second_incident["id"],
+        hidden_values=hidden_incident_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/incidents?service_id={first_service['id']}"),
+        expected_id=None,
+        hidden_values=hidden_incident_values,
+        total_count="0",
+    )
+    _assert_collection_contains_only(
+        client.get(f"/api/v1/incidents?service_id={second_service['id']}"),
+        expected_id=second_incident["id"],
+        hidden_values=hidden_incident_values,
+        total_count="1",
+    )
+    _assert_collection_contains_only(
+        client.get("/api/v1/incidents?status=open"),
+        expected_id=second_incident["id"],
+        hidden_values=hidden_incident_values,
+        total_count="1",
+    )
 
 
 def test_runbook_detail_is_hidden_from_other_users(

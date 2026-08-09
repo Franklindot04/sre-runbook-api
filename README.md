@@ -184,6 +184,7 @@ under review.
 ## Documentation
 
 - [Contribution and Review Process](CONTRIBUTING.md)
+- [Maintainer Guide](MAINTAINERS.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Project Roadmap](ROADMAP.md)
 - [Deployment Environment Guide](docs/deployment-environment-guide.md)

@@ -19,12 +19,15 @@ The API provides a structured foundation for managing:
 
 The API currently provides:
 
+- Public user registration and login.
 - Service creation and listing.
 - Runbook creation, listing, filtering, and retrieval.
 - Alert creation and service-based filtering.
 - Incident creation with optional alert association.
 - Incident filtering by service and status.
 - Liveness and readiness health checks.
+- Correlation IDs, structured request logs, standardized error responses, and
+  security response headers.
 - OpenAPI documentation through FastAPI.
 
 ## Core Domains
@@ -104,6 +107,8 @@ http://127.0.0.1:8000/docs
 | --- | --- | --- |
 | GET | `/health/live` | Liveness check |
 | GET | `/health/ready` | Readiness check |
+| POST | `/api/v1/auth/register` | Register a user and return the created user record |
+| POST | `/api/v1/auth/login` | Validate credentials and return a bearer access token |
 | POST | `/api/v1/services` | Create a service |
 | GET | `/api/v1/services` | List services |
 | POST | `/api/v1/runbooks` | Create a runbook |
@@ -114,25 +119,54 @@ http://127.0.0.1:8000/docs
 | POST | `/api/v1/incidents` | Create an incident |
 | GET | `/api/v1/incidents` | List and filter incidents |
 
+The two authentication endpoints are public. The operational endpoints under
+`/api/v1/services`, `/api/v1/runbooks`, `/api/v1/alerts`, and
+`/api/v1/incidents` require both the configured API key header and a bearer
+token for an active user. The API key protects the operational API surface; the
+bearer token resolves the current user for ownership checks.
+
+Registration stores a normalized email address and a hashed password. Login
+verifies the submitted password and returns a signed JWT bearer token. The API
+does not return password hashes in registration or login responses.
+
+Services are owned by users. Service listing returns only the current user's
+services, and runbook, alert, and incident operations are restricted through
+the owned service relationship where those routes exist. Cross-user service,
+runbook, alert, and incident references are rejected with the same not-found
+style responses used for missing resources.
+
+Every request receives an `X-Correlation-ID` response header. A valid incoming
+`X-Correlation-ID` is preserved; invalid or missing values are replaced. Access
+logs are emitted as JSON records with request method, path, status code,
+duration, and correlation ID. API-key authentication success and failure events
+are also logged as structured JSON without logging submitted API keys or bearer
+credentials. HTTP and validation errors use the repository error envelope with
+`detail`, `error_code`, and `correlation_id`. Responses include the configured
+security headers.
+
 ## Testing and Quality
 
 Run the test suite:
 
 ```bash
-pytest
+.venv/bin/python -m pytest
 ```
 
 Run static analysis:
 
 ```bash
-ruff check .
+.venv/bin/ruff check .
 ```
 
 Run both checks before committing:
 
 ```bash
-pytest && ruff check .
+.venv/bin/ruff check .
+.venv/bin/python -m pytest
 ```
+
+CI installs the project with development dependencies on Python 3.12, then runs
+`ruff check .` and `pytest` for pull requests targeting `main`.
 
 ## Database Migrations
 
@@ -194,35 +228,77 @@ items are listed under **NEXT — ROADMAP**.
   - API keys are compared using `secrets.compare_digest()`.
   - Missing and invalid API keys return `401 Unauthorized`.
 
+- [x] Authentication foundation
+  - Users can register through `POST /api/v1/auth/register`.
+  - Users can log in through `POST /api/v1/auth/login`.
+  - Passwords are hashed with `pwdlib`.
+  - Login returns a signed bearer JWT.
+  - Invalid, expired, malformed, inactive-user, and missing-user tokens are
+    rejected.
+
 - [x] Service management
   - Services can be created and listed.
-  - Service metadata includes ownership information.
+  - Service metadata includes owner-team information.
+  - Created services are assigned to the authenticated user.
+  - Service listing is scoped to the authenticated user.
 
 - [x] Runbook creation and retrieval
   - Runbooks can be created and retrieved.
-  - Runbooks are associated with existing services.
+  - Runbooks are associated with existing services owned by the current user.
   - Runbooks support filtering by title and slug search fields.
+  - Runbook detail lookup hides another user's runbooks with a not-found
+    response.
 
 - [x] Alert management
   - Alerts can be created and listed.
   - Alerts support service-based filtering.
   - Alerts contain fingerprints, monitoring sources, severity, and descriptions.
+  - Alert creation and listing are scoped through owned services.
 
 - [x] Incident creation and filtering
   - Incidents can be created with optional alert associations.
   - Incidents support filtering by service and status.
   - Incident severity and open status are represented in the API.
+  - Incident creation rejects cross-user service and alert references with safe
+    not-found responses.
 
 - [x] Pagination utilities
   - Collection endpoints support `limit` and `offset`.
   - Invalid pagination values are rejected.
   - Filtered collections expose `X-Total-Count`.
 
+- [x] Request correlation IDs
+  - Requests receive an `X-Correlation-ID` response header.
+  - Valid incoming correlation IDs are preserved.
+  - Invalid or missing correlation IDs are replaced.
+  - Error responses and structured logs include the active correlation ID.
+
+- [x] Structured request logging
+  - Completed requests are logged as JSON access events.
+  - Failed requests are logged as JSON failure events.
+  - Access log records include method, path, status code, duration, and
+    correlation ID.
+
+- [x] Authentication audit logging
+  - API-key success and failure events are emitted as structured JSON.
+  - API keys and authorization credentials are not logged.
+
+- [x] Standardized error responses
+  - HTTP errors include `detail`, `error_code`, and `correlation_id`.
+  - Validation errors use the same response envelope.
+
+- [x] Security response headers
+  - Responses include content-type, frame, frame-ancestor, referrer, and
+    cache-control headers.
+  - Header coverage is tested for success and error responses.
+
 - [x] Health endpoints
   - Liveness and readiness endpoints are available.
+  - Readiness checks the database connection and returns `503` when unavailable.
 
 - [x] Database migrations
   - Alembic is used to manage schema migrations.
+  - Current migrations create operational tables, users, and service ownership.
 
 - [x] Automated quality checks
   - The test suite runs through pytest.
@@ -232,22 +308,13 @@ items are listed under **NEXT — ROADMAP**.
 - [x] Negative-path API tests — current scope
   - Missing API keys.
   - Invalid API keys.
+  - Missing and invalid bearer tokens.
   - Invalid pagination values.
   - Missing runbook services.
+  - Cross-user ownership references.
   - Authentication audit-log safety.
 
 ### Partially implemented
-
-- [ ] Structured application logging
-  - Authentication success and failure events are emitted as structured JSON.
-  - API keys and authorization credentials are not logged.
-  - **NEXT — ROADMAP:** extend structured logging consistently across request,
-    database, runbook, alert, and incident operations.
-
-- [ ] Request correlation IDs
-  - Authentication audit events include a `correlation_id` field.
-  - **NEXT — ROADMAP:** add middleware that creates or propagates a correlation
-    ID and makes it available throughout the request lifecycle.
 
 - [ ] Database test fixtures
   - Tests currently reset the database schema between tests.
@@ -266,10 +333,8 @@ items are listed under **NEXT — ROADMAP**.
 
 ### NEXT — ROADMAP
 
-- [ ] Authentication models.
-- [ ] Authentication endpoints.
-- [ ] Password hashing and token handling.
-- [ ] User/service ownership authorization.
+- [ ] Broaden authorization coverage for future update and delete routes when
+  those routes are added.
 - [ ] Runbook update endpoint.
 - [ ] Runbook lifecycle status.
 - [ ] Alert deduplication improvements.
@@ -277,7 +342,6 @@ items are listed under **NEXT — ROADMAP**.
 - [ ] Incident resolution endpoint.
 - [ ] Incident timeline events.
 - [ ] Remediation references.
-- [ ] Consistent API error responses.
 - [ ] Metrics endpoint.
 - [ ] Expanded readiness checks.
 - [ ] Container non-root hardening.
@@ -290,9 +354,12 @@ items are listed under **NEXT — ROADMAP**.
 ## Current Status
 
 The project is an early production-oriented MVP with service, runbook, alert,
-and incident workflows; API-key protection; filtering and pagination; database
-migrations; health checks; automated tests; and CI validation.
+and incident workflows; public registration and login; API-key and bearer-token
+requirements for operational routes; ownership-scoped service, runbook, alert,
+and incident access; filtering and pagination; database migrations; health
+checks; correlation IDs; structured request and authentication logs; standard
+error envelopes; security headers; automated tests; and CI validation.
 
-The next implementation focus is the authentication foundation: authentication
-models, password hashing, token handling, authentication endpoints, and
-ownership-based authorization.
+Remaining work is focused on product endpoints that do not exist yet, broader
+integration coverage, PostgreSQL validation, deployment documentation, container
+hardening, repository governance verification, and final release validation.

@@ -168,6 +168,52 @@ def _assert_collection_contains_only(
         assert value not in body_text
 
 
+def _incident_payload(
+    *,
+    service_id: int,
+    alert_id: int | None,
+    title: str,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "service_id": service_id,
+        "title": title,
+        "summary": f"{title} should respect incident ownership boundaries.",
+        "severity": "high",
+    }
+    if alert_id is not None:
+        payload["alert_id"] = alert_id
+
+    return payload
+
+
+def _assert_incident_count(client: TestClient, expected_count: str) -> None:
+    response = client.get("/api/v1/incidents")
+
+    assert response.status_code == 200
+    assert response.headers["X-Total-Count"] == expected_count
+    assert len(response.json()) == int(expected_count)
+
+
+def _assert_safe_incident_rejection(
+    response,
+    *,
+    expected_detail: str,
+    hidden_values: set[str],
+) -> None:
+    body_text = response.text
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_detail
+    assert response.json()["error_code"] == "http_error"
+    assert API_KEY not in body_text
+    assert "@" not in body_text
+    assert "password_hash" not in body_text
+    assert "Traceback" not in body_text
+
+    for value in hidden_values:
+        assert value not in body_text
+
+
 def test_create_and_list_service(client: TestClient) -> None:
     response = client.post(
         "/api/v1/services",
@@ -947,6 +993,103 @@ def test_collection_filters_hide_other_users_resources(
         hidden_values=hidden_incident_values,
         total_count="1",
     )
+
+
+def test_incident_creation_rejects_cross_user_service_and_alert_references(
+    client: TestClient,
+) -> None:
+    first_user_resources = _create_owned_operational_set(
+        client,
+        prefix="Incident First User",
+        service_name="Incident First User API",
+        service_slug="incident-first-user-api",
+        runbook_title="Incident First User Runbook",
+        runbook_slug="incident-first-user-runbook",
+        alert_severity="critical",
+    )
+
+    second_token = _register_and_login(
+        client,
+        email="incident-second-user",
+    )
+    client.headers.update({"Authorization": f"Bearer {second_token}"})
+
+    second_user_resources = _create_owned_operational_set(
+        client,
+        prefix="Incident Second User",
+        service_name="Incident Second User API",
+        service_slug="incident-second-user-api",
+        runbook_title="Incident Second User Runbook",
+        runbook_slug="incident-second-user-runbook",
+        alert_severity="high",
+    )
+
+    first_service = first_user_resources["service"]
+    first_alert = first_user_resources["alert"]
+    second_service = second_user_resources["service"]
+    second_alert = second_user_resources["alert"]
+
+    _assert_incident_count(client, "1")
+
+    valid_response = client.post(
+        "/api/v1/incidents",
+        json=_incident_payload(
+            service_id=second_service["id"],
+            alert_id=second_alert["id"],
+            title="Incident Second User Valid Control",
+        ),
+    )
+    assert valid_response.status_code == 201
+    assert valid_response.json()["service_id"] == second_service["id"]
+    assert valid_response.json()["alert_id"] == second_alert["id"]
+    _assert_incident_count(client, "2")
+
+    hidden_service_values = {
+        first_service["name"],
+        first_service["slug"],
+        first_service["description"],
+        first_alert["name"],
+        first_alert["fingerprint"],
+        first_alert["description"],
+    }
+    service_reference_response = client.post(
+        "/api/v1/incidents",
+        json=_incident_payload(
+            service_id=first_service["id"],
+            alert_id=None,
+            title="Incident Cross User Service Rejection",
+        ),
+    )
+
+    _assert_safe_incident_rejection(
+        service_reference_response,
+        expected_detail="Service not found.",
+        hidden_values=hidden_service_values,
+    )
+    _assert_incident_count(client, "2")
+
+    hidden_alert_values = {
+        first_alert["name"],
+        first_alert["fingerprint"],
+        first_alert["description"],
+        first_service["name"],
+        first_service["slug"],
+    }
+    alert_reference_response = client.post(
+        "/api/v1/incidents",
+        json=_incident_payload(
+            service_id=second_service["id"],
+            alert_id=first_alert["id"],
+            title="Incident Cross User Alert Rejection",
+        ),
+    )
+
+    _assert_safe_incident_rejection(
+        alert_reference_response,
+        expected_detail="Alert not found.",
+        hidden_values=hidden_alert_values,
+    )
+    _assert_incident_count(client, "2")
 
 
 def test_runbook_detail_is_hidden_from_other_users(

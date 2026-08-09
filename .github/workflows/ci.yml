@@ -66,6 +66,13 @@ jobs:
               engine.dispose()
           PY
 
+      - name: Validate Alembic migration command
+        env:
+          DATABASE_URL: postgresql+psycopg://${{ env.CI_POSTGRES_USER }}:${{ env.CI_POSTGRES_PASSWORD }}@localhost:5432/${{ env.CI_POSTGRES_DB }}
+        run: |
+          alembic upgrade head
+          alembic current --check-heads
+
       - name: Run Ruff
         run: ruff check .
 

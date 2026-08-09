@@ -1,67 +1,123 @@
-# sre-runbook-api
+# SRE Runbook API
 
-Centralized SRE runbook API for service alerts, operational metadata, remediation references, and incident context.
+`sre-runbook-api` is a production-minded FastAPI backend for structured
+operational runbooks, incidents, alerts, service ownership, and reliability
+workflows. It gives SRE and platform teams a database-backed API for collecting
+the operational context responders need during on-call work: what service is
+affected, who owns it, what runbook applies, which alerts are involved, and how
+incident records are organized.
 
-## Overview
+The repository is intentionally focused on the API layer and its operating
+boundaries. It does not claim a hosted SaaS product, cloud infrastructure, or
+deployment platform; those decisions remain outside the repository.
 
-`sre-runbook-api` is a production-oriented backend service for centralizing operational knowledge used during incident response and on-call workflows.
+## Project Status
 
-The API provides a structured foundation for managing:
+The planned implementation and review roadmap for this repository has been
+completed. The project is in a stable, validated state with application code,
+migrations, tests, CI, Docker startup behavior, deployment guidance, release
+readiness guidance, and contribution workflow documentation in place.
 
-- Production services.
-- Operational runbooks.
-- Monitoring alerts.
-- Incident context.
-- Severity and ownership metadata.
-- Database-backed remediation references.
+Current non-code follow-up is administrative rather than functional: repository
+operators may still choose to configure stricter GitHub branch protection,
+release tagging, vulnerability scanning, or platform-specific deployment
+controls outside this codebase.
 
-## API Capabilities
+## Project Leadership
 
-The API currently provides:
+- **Franklin Ajero (`@Franklindot04`)** - Project Owner and Maintainer
+- **Ellesmaris (`@ellesmaris`)** - Co-Author and Reviewer
+
+The repository was developed through focused pull requests, independent review,
+and GitHub-recognized co-authorship where both contributors materially
+contributed. Material joint contributions are credited with standard
+`Co-authored-by` trailers so GitHub can recognize the work without publishing
+collaborator contact details in project documentation.
+
+## Core Capabilities
+
+The API currently supports:
 
 - Public user registration and login.
-- Service creation and listing.
-- Runbook creation, listing, filtering, and retrieval.
-- Alert creation and service-based filtering.
-- Incident creation with optional alert association.
-- Incident filtering by service and status.
-- Liveness and readiness health checks.
-- Correlation IDs, structured request logs, standardized error responses, and
-  security response headers.
-- OpenAPI documentation through FastAPI.
+- Password hashing and signed bearer access tokens.
+- API-key protection for operational endpoints.
+- User-owned services with list and search behavior scoped to the current user.
+- Runbook creation, listing, searching, filtering, and detail retrieval.
+- Alert creation, listing, service filtering, severity filtering, and fingerprint
+  uniqueness.
+- Incident creation with optional alert association and filtering by service or
+  status.
+- Ownership-aware authorization boundaries for service, runbook, alert, and
+  incident operations.
+- Pagination with `limit`, `offset`, and `X-Total-Count` on collection routes.
+- Liveness and readiness endpoints, including database readiness checks.
+- Request correlation IDs, structured request logging, authentication audit
+  logging, security response headers, and standardized API error envelopes.
+- SQLite-backed local development and PostgreSQL migration coverage in CI.
 
-## Core Domains
-
-### Services
-
-Represents a production service and its operational ownership.
-
-### Runbooks
-
-Contains structured response procedures, remediation guidance, severity, and service association.
-
-### Alerts
-
-Stores alert fingerprints, monitoring sources, severity, descriptions, and associated services.
-
-### Incidents
-
-Captures active operational incidents, their alert context, severity, status, and affected service.
+This README is a high-level project guide rather than a complete endpoint
+reference. FastAPI exposes interactive OpenAPI documentation at `/docs` when
+the application is running.
 
 ## Architecture
 
-The project uses a layered backend structure:
+The project uses a compact `src` layout:
 
-- FastAPI provides the HTTP API layer.
-- Pydantic provides request and response validation.
-- SQLAlchemy provides database access and domain models.
-- Alembic manages database schema migrations.
-- SQLite supports local development.
-- PostgreSQL is supported for production deployments.
-- Docker provides a reproducible runtime environment.
-- GitHub Actions validates tests and code quality.
+```text
+src/sre_runbook_api/
+```
 
-## Local Development
+The main application entry point is:
+
+```text
+sre_runbook_api.main:app
+```
+
+The stack is:
+
+- Python 3.12 or newer.
+- FastAPI for the HTTP API.
+- Pydantic and Pydantic Settings for request validation and runtime
+  configuration.
+- SQLAlchemy for persistence models and sessions.
+- Alembic for schema migrations.
+- SQLite as the default local development database.
+- PostgreSQL through the psycopg SQLAlchemy driver for production-style
+  integration and CI migration coverage.
+- pytest for automated tests.
+- Ruff for linting.
+- Docker for reproducible container startup.
+- GitHub Actions for pull-request validation.
+
+Alembic migration history creates the operational tables, authentication users,
+and service ownership relationship. The Dockerfile installs the package, applies
+`alembic upgrade head`, and starts Uvicorn on port `8000`.
+
+## Reliability and Security
+
+Implemented reliability and security practices include:
+
+- API-key authentication for protected operational routes.
+- Bearer-token authentication for active users.
+- Password hashing for registered users.
+- Ownership filtering so users see and operate on their own services and
+  related runbooks, alerts, and incidents.
+- Safe not-found style responses for cross-user resource references.
+- Protected-mode validation for staging and production authentication secrets.
+- Secret-safe configuration examples in `.env.example`.
+- Request correlation IDs in responses, logs, and error payloads.
+- Structured JSON access logs and API-key authentication audit logs without
+  logging submitted credentials.
+- Standardized HTTP and validation error responses with `detail`, `error_code`,
+  and `correlation_id`.
+- Security response headers on success and error responses.
+- Database readiness checks and PostgreSQL migration lifecycle coverage.
+- Isolated test database behavior for the ordinary test suite.
+
+The repository does not include Kubernetes manifests, automated release
+management, hosted infrastructure, or a vulnerability scanning workflow.
+
+## Getting Started
 
 Create and activate a virtual environment:
 
@@ -70,14 +126,19 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install the project and development dependencies:
+Install the project with development dependencies:
 
 ```bash
 pip install -e ".[dev]"
+```
+
+Prepare local configuration:
+
+```bash
 cp .env.example .env
 ```
 
-Create the local database schema:
+Apply migrations:
 
 ```bash
 alembic upgrade head
@@ -89,288 +150,59 @@ Start the API:
 uvicorn sre_runbook_api.main:app --reload
 ```
 
-The API is available at:
-
-```text
-http://127.0.0.1:8000
-```
-
-Interactive API documentation is available at:
+Then open:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-## API Endpoints
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| GET | `/health/live` | Liveness check |
-| GET | `/health/ready` | Readiness check |
-| POST | `/api/v1/auth/register` | Register a user and return the created user record |
-| POST | `/api/v1/auth/login` | Validate credentials and return a bearer access token |
-| POST | `/api/v1/services` | Create a service |
-| GET | `/api/v1/services` | List services |
-| POST | `/api/v1/runbooks` | Create a runbook |
-| GET | `/api/v1/runbooks` | List and filter runbooks |
-| GET | `/api/v1/runbooks/{runbook_id}` | Retrieve a runbook |
-| POST | `/api/v1/alerts` | Create an alert |
-| GET | `/api/v1/alerts` | List and filter alerts |
-| POST | `/api/v1/incidents` | Create an incident |
-| GET | `/api/v1/incidents` | List and filter incidents |
-
-The two authentication endpoints are public. The operational endpoints under
-`/api/v1/services`, `/api/v1/runbooks`, `/api/v1/alerts`, and
-`/api/v1/incidents` require both the configured API key header and a bearer
-token for an active user. The API key protects the operational API surface; the
-bearer token resolves the current user for ownership checks.
-
-Registration stores a normalized email address and a hashed password. Login
-verifies the submitted password and returns a signed JWT bearer token. The API
-does not return password hashes in registration or login responses.
-
-Services are owned by users. Service listing returns only the current user's
-services, and runbook, alert, and incident operations are restricted through
-the owned service relationship where those routes exist. Cross-user service,
-runbook, alert, and incident references are rejected with the same not-found
-style responses used for missing resources.
-
-Every request receives an `X-Correlation-ID` response header. A valid incoming
-`X-Correlation-ID` is preserved; invalid or missing values are replaced. Access
-logs are emitted as JSON records with request method, path, status code,
-duration, and correlation ID. API-key authentication success and failure events
-are also logged as structured JSON without logging submitted API keys or bearer
-credentials. HTTP and validation errors use the repository error envelope with
-`detail`, `error_code`, and `correlation_id`. Responses include the configured
-security headers.
-
-## Testing and Quality
-
-For contribution, review, attribution, and pull-request expectations, see the
-[Contribution and Review Process](CONTRIBUTING.md).
-For closure status after the merged roadmap, see the
-[Project Completion Review](docs/project-completion-review.md).
-
-Run the test suite:
-
-```bash
-.venv/bin/python -m pytest
-```
-
-Run static analysis:
-
-```bash
-.venv/bin/ruff check .
-```
-
-Run both checks before committing:
-
-```bash
-.venv/bin/ruff check .
-.venv/bin/python -m pytest
-```
-
-CI installs the project with development dependencies on Python 3.12, then runs
-`ruff check .` and `pytest` for pull requests targeting `main`.
-
-## Database Migrations
-
-Create a new migration after changing models:
-
-```bash
-alembic revision --autogenerate -m "describe schema change"
-```
-
-Apply migrations:
-
-```bash
-alembic upgrade head
-```
-
-Check the current migration:
-
-```bash
-alembic current
-```
-
-## Docker
-
-Build the container:
-
-```bash
-docker build -t sre-runbook-api .
-```
-
-Run the API:
-
-```bash
-docker run --rm -p 8000:8000 sre-runbook-api
-```
-
-The container applies database migrations before starting the API server.
-
-## Deployment
-
-Production deployments should provide:
-
-- A PostgreSQL `DATABASE_URL`.
-- Environment-specific configuration.
-- Automated database migrations.
-- Containerized application execution.
-- CI validation before merging.
-- Secure handling of environment variables and credentials.
-
-For repository-specific deployment configuration, migration ordering, startup,
-and verification guidance, see the
+For deployment configuration, protected-environment secret validation,
+PostgreSQL behavior, migration ordering, and post-start verification, see the
 [Deployment Environment Guide](docs/deployment-environment-guide.md).
-For the final gate before deploying or publishing a release, use the
-[Release Readiness Checklist](docs/release-readiness-checklist.md).
 
-## Project Roadmap
+## Validation
 
-This checklist tracks the implementation status of the project. Completed work is
-checked off, partially implemented work is marked as partial, and unfinished
-items are listed under **NEXT — ROADMAP**.
+Run the primary local checks before opening a pull request:
 
-### Completed
+```bash
+.venv/bin/ruff check .
 
-- [x] API security configuration
-  - Protected operational endpoints require an API key.
-  - API keys are compared using `secrets.compare_digest()`.
-  - Missing and invalid API keys return `401 Unauthorized`.
+PYTHONDONTWRITEBYTECODE=1 \
+  .venv/bin/python -m pytest -p no:cacheprovider
 
-- [x] Authentication foundation
-  - Users can register through `POST /api/v1/auth/register`.
-  - Users can log in through `POST /api/v1/auth/login`.
-  - Passwords are hashed with `pwdlib`.
-  - Login returns a signed bearer JWT.
-  - Invalid, expired, malformed, inactive-user, and missing-user tokens are
-    rejected.
+git diff --check
+```
 
-- [x] Service management
-  - Services can be created and listed.
-  - Service metadata includes owner-team information.
-  - Created services are assigned to the authenticated user.
-  - Service listing is scoped to the authenticated user.
+Local PostgreSQL migration lifecycle coverage may skip when
+`CI_POSTGRES_DATABASE_URL` is not available. CI supplies PostgreSQL integration
+configuration and runs the migration lifecycle coverage without skipping.
 
-- [x] Runbook creation and retrieval
-  - Runbooks can be created and retrieved.
-  - Runbooks are associated with existing services owned by the current user.
-  - Runbooks support filtering by title and slug search fields.
-  - Runbook detail lookup hides another user's runbooks with a not-found
-    response.
+Do not treat a historical test total as a permanent project guarantee. Review
+the current Ruff, pytest, warning, skip, and CI results for the exact commit
+under review.
 
-- [x] Alert management
-  - Alerts can be created and listed.
-  - Alerts support service-based filtering.
-  - Alerts contain fingerprints, monitoring sources, severity, and descriptions.
-  - Alert creation and listing are scoped through owned services.
+## Documentation
 
-- [x] Incident creation and filtering
-  - Incidents can be created with optional alert associations.
-  - Incidents support filtering by service and status.
-  - Incident severity and open status are represented in the API.
-  - Incident creation rejects cross-user service and alert references with safe
-    not-found responses.
+- [Contribution and Review Process](CONTRIBUTING.md)
+- [Deployment Environment Guide](docs/deployment-environment-guide.md)
+- [Release Readiness Checklist](docs/release-readiness-checklist.md)
+- [Project Completion Review](docs/project-completion-review.md)
+- [Migration Notes](migrations/README)
+- [License](LICENSE)
 
-- [x] Pagination utilities
-  - Collection endpoints support `limit` and `offset`.
-  - Invalid pagination values are rejected.
-  - Filtered collections expose `X-Total-Count`.
+## Repository Workflow
 
-- [x] Request correlation IDs
-  - Requests receive an `X-Correlation-ID` response header.
-  - Valid incoming correlation IDs are preserved.
-  - Invalid or missing correlation IDs are replaced.
-  - Error responses and structured logs include the active correlation ID.
+Project work uses focused topic branches and pull requests into `main`.
+Contributors validate locally before review, CI provides shared PostgreSQL,
+Alembic, Ruff, and pytest evidence, and an independent collaborator reviews the
+current PR head before merge.
 
-- [x] Structured request logging
-  - Completed requests are logged as JSON access events.
-  - Failed requests are logged as JSON failure events.
-  - Access log records include method, path, status code, duration, and
-    correlation ID.
+Recent project work has used normal merge commits. Material joint contributions
+are credited with GitHub-recognized `Co-authored-by` trailers, and merged topic
+branches are cleaned up after completion. See the
+[Contribution and Review Process](CONTRIBUTING.md) for the full workflow.
 
-- [x] Authentication audit logging
-  - API-key success and failure events are emitted as structured JSON.
-  - API keys and authorization credentials are not logged.
+## License
 
-- [x] Standardized error responses
-  - HTTP errors include `detail`, `error_code`, and `correlation_id`.
-  - Validation errors use the same response envelope.
-
-- [x] Security response headers
-  - Responses include content-type, frame, frame-ancestor, referrer, and
-    cache-control headers.
-  - Header coverage is tested for success and error responses.
-
-- [x] Health endpoints
-  - Liveness and readiness endpoints are available.
-  - Readiness checks the database connection and returns `503` when unavailable.
-
-- [x] Database migrations
-  - Alembic is used to manage schema migrations.
-  - Current migrations create operational tables, users, and service ownership.
-
-- [x] Automated quality checks
-  - The test suite runs through pytest.
-  - Ruff validates code quality.
-  - GitHub Actions runs CI checks for pull requests.
-
-- [x] Negative-path API tests — current scope
-  - Missing API keys.
-  - Invalid API keys.
-  - Missing and invalid bearer tokens.
-  - Invalid pagination values.
-  - Missing runbook services.
-  - Cross-user ownership references.
-  - Authentication audit-log safety.
-
-### Partially implemented
-
-- [ ] Database test fixtures
-  - Tests currently reset the database schema between tests.
-  - **NEXT — ROADMAP:** improve fixture isolation and add PostgreSQL-backed
-    integration fixtures.
-
-- [ ] PostgreSQL integration configuration
-  - PostgreSQL is identified as the production database target.
-  - **NEXT — ROADMAP:** add verified PostgreSQL integration configuration and
-    automated integration coverage.
-
-- [ ] Branch protection and repository governance
-  - Feature branches, pull requests, and CI checks are in use.
-  - **NEXT — ROADMAP:** verify protected branches, required reviews, required
-    status checks, and merge policy in repository settings.
-
-### NEXT — ROADMAP
-
-- [ ] Broaden authorization coverage for future update and delete routes when
-  those routes are added.
-- [ ] Runbook update endpoint.
-- [ ] Runbook lifecycle status.
-- [ ] Alert deduplication improvements.
-- [ ] Incident status transitions.
-- [ ] Incident resolution endpoint.
-- [ ] Incident timeline events.
-- [ ] Remediation references.
-- [ ] Metrics endpoint.
-- [ ] Expanded readiness checks.
-- [ ] Container non-root hardening.
-- [ ] Docker health check.
-- [ ] Dependency and security scanning.
-- [ ] Release metadata and versioning.
-- [ ] Deployment documentation.
-- [ ] Final integration and release validation.
-
-## Current Status
-
-The project is an early production-oriented MVP with service, runbook, alert,
-and incident workflows; public registration and login; API-key and bearer-token
-requirements for operational routes; ownership-scoped service, runbook, alert,
-and incident access; filtering and pagination; database migrations; health
-checks; correlation IDs; structured request and authentication logs; standard
-error envelopes; security headers; automated tests; and CI validation.
-
-Remaining work is focused on product endpoints that do not exist yet, broader
-integration coverage, PostgreSQL validation, deployment documentation, container
-hardening, repository governance verification, and final release validation.
+This project is licensed under the
+[Apache License 2.0](LICENSE).

@@ -3,10 +3,10 @@ from datetime import UTC, datetime, timedelta
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from sre_runbook_api.auth import create_access_token, hash_password
 from sre_runbook_api.config import get_settings
-from sre_runbook_api.database import Base, SessionLocal, engine
 from sre_runbook_api.main import app
 from sre_runbook_api.models import User
 
@@ -25,35 +25,6 @@ SENSITIVE_ERROR_FRAGMENTS = (
     "jwt_secret",
     API_KEY,
 )
-
-
-@pytest.fixture
-def client():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
-    user = User(
-        email="fixture@example.com",
-        display_name="Fixture User",
-        password_hash=hash_password("fixture-password-123"),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    access_token = create_access_token(str(user.id))
-    db.close()
-
-    with TestClient(
-        app,
-        headers={
-            "X-API-Key": API_KEY,
-            "Authorization": f"Bearer {access_token}",
-        },
-    ) as test_client:
-        yield test_client
-
-    Base.metadata.drop_all(bind=engine)
 
 
 def _register_and_login(
@@ -528,22 +499,19 @@ def test_protected_route_rejects_invalid_bearer_tokens_safely(
     assert "Traceback" not in body_text
 
 
-def test_protected_route_rejects_token_for_missing_user_safely() -> None:
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+def test_protected_route_rejects_token_for_missing_user_safely(
+    empty_database: None,
+) -> None:
     access_token = create_access_token("999999")
 
-    try:
-        with TestClient(
-            app,
-            headers={
-                "X-API-Key": API_KEY,
-                "Authorization": f"Bearer {access_token}",
-            },
-        ) as test_client:
-            response = test_client.get("/api/v1/services")
-    finally:
-        Base.metadata.drop_all(bind=engine)
+    with TestClient(
+        app,
+        headers={
+            "X-API-Key": API_KEY,
+            "Authorization": f"Bearer {access_token}",
+        },
+    ) as test_client:
+        response = test_client.get("/api/v1/services")
 
     body_text = response.text
 
@@ -554,34 +522,28 @@ def test_protected_route_rejects_token_for_missing_user_safely() -> None:
     assert "password_hash" not in body_text
 
 
-def test_protected_route_rejects_token_for_inactive_user_safely() -> None:
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
+def test_protected_route_rejects_token_for_inactive_user_safely(
+    db_session: Session,
+) -> None:
     inactive_user = User(
         email="inactive@example.com",
         display_name="Inactive User",
         password_hash=hash_password("inactive-password-123"),
         is_active=False,
     )
-    db.add(inactive_user)
-    db.commit()
-    db.refresh(inactive_user)
+    db_session.add(inactive_user)
+    db_session.commit()
+    db_session.refresh(inactive_user)
     access_token = create_access_token(str(inactive_user.id))
-    db.close()
 
-    try:
-        with TestClient(
-            app,
-            headers={
-                "X-API-Key": API_KEY,
-                "Authorization": f"Bearer {access_token}",
-            },
-        ) as test_client:
-            response = test_client.get("/api/v1/services")
-    finally:
-        Base.metadata.drop_all(bind=engine)
+    with TestClient(
+        app,
+        headers={
+            "X-API-Key": API_KEY,
+            "Authorization": f"Bearer {access_token}",
+        },
+    ) as test_client:
+        response = test_client.get("/api/v1/services")
 
     body_text = response.text
 

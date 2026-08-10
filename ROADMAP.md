@@ -182,6 +182,8 @@ support guarantees, or delivery dates.
 
 ## Contributing to the Roadmap
 
+Proposal discussions tend to work best when contributors frame ideas 
+in terms of practical impact rather than broad conceptual exploration.
 Roadmap proposals should open a focused issue or pull request, state the
 problem and expected operational value, identify security, migration, and
 compatibility effects, include a validation approach, and avoid bundling

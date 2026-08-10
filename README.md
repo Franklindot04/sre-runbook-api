@@ -207,6 +207,8 @@ These checks ensure that contributors surface issues early, keeping pull request
 - [Migration Notes](migrations/README)
 - [Project Notice](NOTICE)
 - [License](LICENSE)
+This documentation set provides a stable reference framework that helps contributors understand expectations, workflows, 
+and operational boundaries without relying on tribal knowledge.
 
 ## Repository Workflow
 

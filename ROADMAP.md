@@ -161,6 +161,8 @@ hosted service.
 
 ## Decision Criteria for Future Work
 
+Evaluation tends to work best when proposals are reviewed in isolation, 
+allowing contributors to focus on clear operational impact rather than bundled changes.
 Future proposals should be evaluated against operational value, security
 impact, reliability impact, maintenance cost, migration risk, testability,
 documentation requirements, backward compatibility, and repository scope.

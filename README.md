@@ -125,6 +125,9 @@ Implemented reliability and security practices include:
 
 The repository does not include Kubernetes manifests, automated release
 management, hosted infrastructure, or a vulnerability scanning workflow.
+These measures provide a predictable operational baseline that helps responders trust 
+the system’s behavior during both routine workflows and high-pressure incident conditions.
+
 
 ## Getting Started
 

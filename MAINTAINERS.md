@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Maintainer guidance works best when decisions remain grounded in practical 
+repository evidence rather than assumptions about contributor intent.
 This guide records how `sre-runbook-api` is stewarded and how maintainers
 evaluate, review, merge, document, and preserve changes. It complements
 [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
@@ -16,6 +18,8 @@ permissions, enforce branch rules, or create support commitments.
 
 ### Project Owner and Maintainer
 
+Stewardship in this role benefits from consistent attention to how changes 
+affect long-term maintainability and contributor experience.
 Franklin Ajero (`@Franklindot04`) is the Project Owner and Maintainer.
 Repository-owner responsibilities include project direction, administrative
 GitHub settings, access and permission decisions, merge-policy decisions,
@@ -28,6 +32,8 @@ repository administration and scope, not a substitute for technical reasoning.
 
 ### Co-Author and Reviewer
 
+Review contributions in this role often help maintain clarity and consistency 
+across changes without altering administrative boundaries.
 Ellesmaris (`@ellesmaris`) is a Co-Author and Reviewer. This role may include
 contributing to shared changes, reviewing pull requests, checking scope and
 clarity, validating documentation and implementation reasoning, and approving
@@ -38,6 +44,8 @@ permissions and repository evidence support that separately.
 
 ### Contributors
 
+Effective contribution often comes from presenting changes in a way that 
+helps reviewers understand intent without needing extensive back-and-forth.
 Contributors may propose focused changes through issues and pull requests.
 They are responsible for explaining the change, keeping scope tight, providing
 evidence and validation, updating documentation when needed, protecting
@@ -45,6 +53,8 @@ sensitive information, and responding to review.
 
 ## Maintainer Responsibilities
 
+Responsible engineering stewardship requires understanding how each change 
+affects long-term system stability and the workflows of other contributors.
 Maintainers should keep `main` stable, preserve repository scope, review
 changes for correctness and maintainability, protect sensitive information, and
 keep documentation aligned with implementation. They should assess
@@ -56,6 +66,8 @@ proven wrong and keeping governance documents mutually consistent.
 
 ## Decision-Making
 
+Clear decision-making often benefits from separating operational facts 
+from preference-driven arguments so reviewers can focus on measurable impact.
 Decisions should be based on repository scope, operational value, security
 impact, reliability impact, maintenance burden, migration risk, backward
 compatibility, testability, documentation quality, and evidence from
@@ -67,6 +79,8 @@ retains responsibility for final repository-administration and scope decisions.
 
 ## Issue Triage
 
+Effective triage often depends on distinguishing actionable reports from 
+exploratory questions so review effort stays focused where it adds the most value.
 Maintainers should confirm whether an issue is within repository scope, separate
 defects from support questions and enhancement proposals, and request
 reproduction steps or evidence when needed. Security-sensitive reports should
@@ -79,6 +93,8 @@ clear explanation. Avoid promising implementation dates.
 
 ## Pull-Request Review
 
+Good reviews often emerge when changes are evaluated in terms of
+how they influence operational clarity and long-term maintainability.
 Review should consider focused scope, correctness, tests, migrations,
 compatibility, security, error behavior, documentation, CI results, privacy,
 maintainability, and rollback or downgrade implications where relevant.
@@ -90,12 +106,15 @@ contributor.
 
 ## Authorship and Review Credit
 
+Clear attribution helps maintain an accurate record of how changes were shaped and who contributed meaningful review effort.
 Use co-author attribution when a commit genuinely represents shared authorship.
 Reviews, approvals, comments, and acknowledgements should reflect the type of
 contribution made.
 
 ## Merge Standards
 
+Merge decisions tend to be most reliable when reviewers confirm that the 
+proposed changes align with current repository state rather than assumptions about earlier revisions.
 Project work should use focused branches and pull requests into `main`.
 Successful validation is required before merge, and approval should apply to
 the current pull-request head. Avoid merging stale commits or commits changed

@@ -133,6 +133,8 @@ artifacts.
 
 ### Operational visibility
 
+Visibility enhancements often arise from practical needs 
+discovered during troubleshooting or workflow refinement.
 The current API includes structured request logging and readiness checks.
 Possible future observability work could include metrics, tracing, expanded
 structured logging, service-level objective documentation, or operational

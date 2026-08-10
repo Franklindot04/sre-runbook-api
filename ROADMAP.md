@@ -151,6 +151,8 @@ or query enhancements.
 
 ### Deployment maturity
 
+Deployment-related refinements often emerge from practical hosting 
+needs or integration patterns discovered during real-world usage.
 Operators may later add documented deployment targets, container publication,
 managed database deployment examples, backup and recovery exercises, or
 infrastructure automation. The current repository does not commit to a

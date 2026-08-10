@@ -53,6 +53,8 @@ sensitive information, and responding to review.
 
 ## Maintainer Responsibilities
 
+Responsible engineering stewardship requires understanding how each change 
+affects long-term system stability and the workflows of other contributors.
 Maintainers should keep `main` stable, preserve repository scope, review
 changes for correctness and maintainability, protect sensitive information, and
 keep documentation aligned with implementation. They should assess

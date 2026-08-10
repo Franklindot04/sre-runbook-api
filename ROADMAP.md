@@ -173,6 +173,8 @@ genuine joint contribution occurs.
 
 ## Out of Scope or Not Currently Committed
 
+Boundaries listed here help keep discussions focused on work that aligns 
+with the repository’s established purpose and practical maintenance capacity.
 This roadmap does not currently commit the project to hosted SaaS operation, a
 managed cloud service, Kubernetes deployment, a mobile or browser frontend,
 commercial support, automated release publishing, public service availability,

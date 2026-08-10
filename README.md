@@ -219,7 +219,8 @@ current PR head before merge.
 
 Recent project work has used normal merge commits. Material joint contributions
 are credited with GitHub-recognized `Co-authored-by` trailers, and merged topic
-branches are cleaned up after completion. See the
+branches are cleaned up after completion.This workflow keeps changes small, reviewable, and traceable, 
+ensuring that repository history remains clean and operationally meaningful over time. See the
 [Contribution and Review Process](CONTRIBUTING.md) for the full workflow.
 
 ## License

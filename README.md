@@ -193,6 +193,7 @@ configuration and runs the migration lifecycle coverage without skipping.
 Do not treat a historical test total as a permanent project guarantee. Review
 the current Ruff, pytest, warning, skip, and CI results for the exact commit
 under review.
+These checks ensure that contributors surface issues early, keeping pull requests focused on meaningful changes rather than avoidable validation failures.
 
 ## Documentation
 

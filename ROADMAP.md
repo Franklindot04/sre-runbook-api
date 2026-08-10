@@ -142,6 +142,8 @@ dashboard examples.
 
 ### API evolution
 
+API refinements often emerge from practical usage patterns that 
+highlight opportunities for clearer operational flow or more expressive queries.
 Future API work should remain grounded in the existing SRE domain. Possible
 areas include richer filtering or search, runbook version history, incident
 timelines, alert lifecycle improvements, audit history, pagination refinements,

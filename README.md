@@ -10,6 +10,8 @@ incident records are organized.
 The repository is intentionally focused on the API layer and its operating
 boundaries. It does not claim a hosted SaaS product, cloud infrastructure, or
 deployment platform; those decisions remain outside the repository.
+The design emphasizes predictable operational behavior so responders can rely 
+on consistent patterns during incident triage and service recovery.
 
 ## Project Status
 

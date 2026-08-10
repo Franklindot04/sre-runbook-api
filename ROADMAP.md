@@ -110,6 +110,7 @@ contributor-friendly structure that accurately reflects the project’s complete
 
 ## Potential Future Directions
 
+Optional improvements listed here serve as reference ideas that can be evaluated independently when contributors explore new work.
 Future directions are optional and evidence-driven. They should not be treated
 as commitments until they are proposed, reviewed, validated, and accepted in a
 focused pull request.

@@ -79,6 +79,8 @@ retains responsibility for final repository-administration and scope decisions.
 
 ## Issue Triage
 
+Effective triage often depends on distinguishing actionable reports from 
+exploratory questions so review effort stays focused where it adds the most value.
 Maintainers should confirm whether an issue is within repository scope, separate
 defects from support questions and enhancement proposals, and request
 reproduction steps or evidence when needed. Security-sensitive reports should

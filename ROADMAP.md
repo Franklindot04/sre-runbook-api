@@ -74,6 +74,8 @@ guide](CONTRIBUTING.md), [deployment guide](docs/deployment-environment-guide.md
 [maintainer guide](MAINTAINERS.md), [Code of Conduct](CODE_OF_CONDUCT.md),
 [NOTICE](NOTICE), [migration notes](migrations/README), issue forms, a
 pull-request template, and [Apache License 2.0 license text](LICENSE).
+Together, these documents provide a consistent governance baseline that helps contributors 
+understand expectations, workflows, and operational responsibilities across the project.
 
 ## Current Maintenance Priorities
 

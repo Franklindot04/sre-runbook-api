@@ -36,6 +36,8 @@ and GitHub-recognized co-authorship where both contributors materially
 contributed. Material joint contributions are credited with standard
 `Co-authored-by` trailers so GitHub can recognize the work without publishing
 collaborator contact details in project documentation.
+This leadership structure ensures that review quality, project direction, and contributor 
+accountability remain clear throughout the repository’s lifecycle.
 
 ## Core Capabilities
 

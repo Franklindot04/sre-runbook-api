@@ -43,6 +43,8 @@ routes, active-user checks, ownership filtering, authorization boundaries, safe
 not-found behavior for cross-user resources, bearer-token negative-path
 coverage, and protected configuration behavior for staging and production
 authentication secrets.
+These controls collectively ensure that operational actions remain scoped to 
+the correct user context, preventing accidental or unauthorized cross-service interactions.
 
 ### Persistence and migrations
 

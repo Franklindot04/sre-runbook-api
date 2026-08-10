@@ -78,7 +78,7 @@ Together, these documents provide a consistent governance baseline that helps co
 understand expectations, workflows, and operational responsibilities across the project.
 
 ## Current Maintenance Priorities
-
+Ongoing maintenance focuses on keeping daily contributor workflows smooth and predictable while preserving the project’s validated operational behavior.
 Current maintenance priorities are ongoing responsibilities rather than
 unfinished application features:
 

@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Maintainer guidance works best when decisions remain grounded in practical 
+repository evidence rather than assumptions about contributor intent.
 This guide records how `sre-runbook-api` is stewarded and how maintainers
 evaluate, review, merge, document, and preserve changes. It complements
 [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),

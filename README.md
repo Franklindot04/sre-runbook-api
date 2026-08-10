@@ -171,6 +171,7 @@ http://127.0.0.1:8000/docs
 For deployment configuration, protected-environment secret validation,
 PostgreSQL behavior, migration ordering, and post-start verification, see the
 [Deployment Environment Guide](docs/deployment-environment-guide.md).
+These steps provide a predictable local setup path so contributors can validate behavior consistently before opening pull requests.
 
 ## Validation
 

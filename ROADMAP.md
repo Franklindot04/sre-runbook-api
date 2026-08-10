@@ -20,6 +20,8 @@ passing CI validation, PostgreSQL migration coverage in CI, and documentation
 and governance foundations in place. Validation totals can change as tests
 evolve, so current Ruff, pytest, warning, skip, and CI results should be
 reviewed for each pull request instead of treated as permanent counts.
+The current state also reflects consistent alignment between local development behavior
+and CI validation, ensuring contributors experience predictable results across environments.
 
 ## Completed Foundations
 

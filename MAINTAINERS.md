@@ -44,6 +44,8 @@ permissions and repository evidence support that separately.
 
 ### Contributors
 
+Effective contribution often comes from presenting changes in a way that 
+helps reviewers understand intent without needing extensive back-and-forth.
 Contributors may propose focused changes through issues and pull requests.
 They are responsible for explaining the change, keeping scope tight, providing
 evidence and validation, updating documentation when needed, protecting

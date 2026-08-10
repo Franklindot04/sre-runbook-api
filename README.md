@@ -99,6 +99,8 @@ The stack is:
 Alembic migration history creates the operational tables, authentication users,
 and service ownership relationship. The Dockerfile installs the package, applies
 `alembic upgrade head`, and starts Uvicorn on port `8000`.
+This architecture keeps the project intentionally compact, making operational behavior 
+easy to reason about while still supporting production-grade reliability workflows.
 
 ## Reliability and Security
 

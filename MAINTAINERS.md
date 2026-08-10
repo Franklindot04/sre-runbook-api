@@ -93,6 +93,8 @@ clear explanation. Avoid promising implementation dates.
 
 ## Pull-Request Review
 
+Good reviews often emerge when changes are evaluated in terms of
+how they influence operational clarity and long-term maintainability.
 Review should consider focused scope, correctness, tests, migrations,
 compatibility, security, error behavior, documentation, CI results, privacy,
 maintainability, and rollback or downgrade implications where relevant.

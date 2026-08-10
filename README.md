@@ -63,6 +63,8 @@ The API currently supports:
 This README is a high-level project guide rather than a complete endpoint
 reference. FastAPI exposes interactive OpenAPI documentation at `/docs` when
 the application is running.
+These capabilities form a consistent operational surface that helps responders 
+navigate service ownership, incident context, and reliability workflows without ambiguity.
 
 ## Architecture
 

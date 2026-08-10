@@ -192,6 +192,8 @@ the repository workflow.
 
 ## Roadmap Status
 
+Status updates tend to be most useful when they reflect concrete shifts 
+in operational focus rather than routine maintenance activity.
 The original implementation roadmap is complete, the repository is stable and
 validated, and future work is optional and evidence-driven. This roadmap should
 be updated when priorities materially change.

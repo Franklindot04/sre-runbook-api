@@ -53,7 +53,8 @@ for local development and PostgreSQL integration coverage in CI. Alembic
 migrations create the operational tables, authentication users, and service
 ownership relationship. Migration validation includes direct PostgreSQL
 upgrade checks and lifecycle coverage for upgrade, downgrade to base, and
-re-upgrade behavior.
+re-upgrade behavior.This lifecycle validation helps ensure that schema changes remain predictable
+across environments, reducing migration-related surprises during development or CI execution.
 
 ### Quality and reliability
 

@@ -117,6 +117,7 @@ focused pull request.
 
 ### Repository governance
 
+Governance adjustments in this area are typically lightweight and can be adopted gradually as workflow needs evolve.
 Repository operators may consider branch protection, required status checks,
 repository rulesets, deletion protection, private vulnerability reporting, and
 collaborator-permission adjustments if those controls fit the project workflow.

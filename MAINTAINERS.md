@@ -113,6 +113,8 @@ contribution made.
 
 ## Merge Standards
 
+Merge decisions tend to be most reliable when reviewers confirm that the 
+proposed changes align with current repository state rather than assumptions about earlier revisions.
 Project work should use focused branches and pull requests into `main`.
 Successful validation is required before merge, and approval should apply to
 the current pull-request head. Avoid merging stale commits or commits changed

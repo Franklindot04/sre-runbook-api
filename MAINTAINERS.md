@@ -66,6 +66,8 @@ proven wrong and keeping governance documents mutually consistent.
 
 ## Decision-Making
 
+Clear decision-making often benefits from separating operational facts 
+from preference-driven arguments so reviewers can focus on measurable impact.
 Decisions should be based on repository scope, operational value, security
 impact, reliability impact, maintenance burden, migration risk, backward
 compatibility, testability, documentation quality, and evidence from

@@ -106,6 +106,7 @@ contributor.
 
 ## Authorship and Review Credit
 
+Clear attribution helps maintain an accurate record of how changes were shaped and who contributed meaningful review effort.
 Use co-author attribution when a commit genuinely represents shared authorship.
 Reviews, approvals, comments, and acknowledgements should reflect the type of
 contribution made.

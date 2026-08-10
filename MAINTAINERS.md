@@ -18,6 +18,8 @@ permissions, enforce branch rules, or create support commitments.
 
 ### Project Owner and Maintainer
 
+Stewardship in this role benefits from consistent attention to how changes 
+affect long-term maintainability and contributor experience.
 Franklin Ajero (`@Franklindot04`) is the Project Owner and Maintainer.
 Repository-owner responsibilities include project direction, administrative
 GitHub settings, access and permission decisions, merge-policy decisions,

@@ -32,6 +32,8 @@ repository administration and scope, not a substitute for technical reasoning.
 
 ### Co-Author and Reviewer
 
+Review contributions in this role often help maintain clarity and consistency 
+across changes without altering administrative boundaries.
 Ellesmaris (`@ellesmaris`) is a Co-Author and Reviewer. This role may include
 contributing to shared changes, reviewing pull requests, checking scope and
 clarity, validating documentation and implementation reasoning, and approving
